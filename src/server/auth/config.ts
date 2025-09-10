@@ -5,32 +5,6 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 
 import { env } from "@/env";
 
-interface User {
-  id: string;
-  email: string;
-  name?: string | null;
-}
-
-interface EmailResult {
-  data?: {
-    id: string;
-  } | null;
-  error?: string;
-}
-
-interface EmailLogData {
-  userEmail: string;
-  userId?: string;
-  timestamp: string;
-  emailId?: string;
-  attempt?: number;
-  error?: string;
-  stack?: string;
-  totalAttempts?: number;
-  finalError?: string;
-  userAgent?: string;
-}
-
 export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
@@ -56,5 +30,3 @@ export const auth = betterAuth({
   },
   plugins: [nextCookies()],
 });
-
-export type { User, EmailResult, EmailLogData };
