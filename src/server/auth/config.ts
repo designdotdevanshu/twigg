@@ -3,6 +3,8 @@ import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 
+import { env } from "@/env";
+
 interface User {
   id: string;
   email: string;
@@ -29,43 +31,6 @@ interface EmailLogData {
   userAgent?: string;
 }
 
-class ConfigurationError extends Error {
-  constructor(missingVars: string[]) {
-    super(`Missing required environment variables: ${missingVars.join(", ")}`);
-    this.name = "ConfigurationError";
-  }
-}
-
-const validateEmailConfig = (): void => {
-  const requiredEnvVars: string[] = [
-    "RESEND_API_KEY",
-    "RESEND_FROM_EMAIL",
-    "GITHUB_CLIENT_ID",
-    "GITHUB_CLIENT_SECRET",
-    "GOOGLE_CLIENT_ID",
-    "GOOGLE_CLIENT_SECRET",
-  ];
-
-  const missingVars = requiredEnvVars.filter(
-    (varName) => !process.env[varName],
-  );
-
-  if (missingVars.length > 0) {
-    throw new ConfigurationError(missingVars);
-  }
-};
-
-// Custom error class for better error handling
-class EmailDeliveryError extends Error {
-  constructor(
-    message: string,
-    public originalError?: Error,
-  ) {
-    super(message);
-    this.name = "EmailDeliveryError";
-  }
-}
-
 export const auth = betterAuth({
   database: prismaAdapter(db, {
     provider: "postgresql",
@@ -75,9 +40,21 @@ export const auth = betterAuth({
     resetPasswordTokenExpiresIn: 3600, // 1 hour
     autoSignIn: false,
   },
+  socialProviders: {
+    github: {
+      clientId: env.GITHUB_CLIENT_ID as string,
+      clientSecret: env.GITHUB_CLIENT_SECRET as string,
+    },
+    google: {
+      clientId: env.GOOGLE_CLIENT_ID as string,
+      clientSecret: env.GOOGLE_CLIENT_SECRET as string,
+    },
+    facebook: {
+      clientId: env.FACEBOOK_CLIENT_ID as string,
+      clientSecret: env.FACEBOOK_CLIENT_SECRET as string,
+    },
+  },
   plugins: [nextCookies()],
 });
 
-// Export types and functions for use in other modules
 export type { User, EmailResult, EmailLogData };
-export { validateEmailConfig, ConfigurationError, EmailDeliveryError };
