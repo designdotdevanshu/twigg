@@ -13,6 +13,11 @@ export const env = createEnv({
       .default("development"),
     BETTER_AUTH_SECRET: z.string().min(1, "BETTER_AUTH_SECRET is required"),
     BETTER_AUTH_URL: z.string().url().min(1, "BETTER_AUTH_URL is required"),
+    RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY is required"),
+    RESEND_FROM_EMAIL: z
+      .string()
+      .email("RESEND_FROM_EMAIL must be a valid email")
+      .min(1, "RESEND_FROM_EMAIL is required"),
     GITHUB_CLIENT_ID: z.string().min(1, "GITHUB_CLIENT_ID is required"),
     GITHUB_CLIENT_SECRET: z.string().min(1, "GITHUB_CLIENT_SECRET is required"),
     GOOGLE_CLIENT_ID: z.string().min(1, "GOOGLE_CLIENT_ID is required"),
@@ -46,6 +51,8 @@ export const env = createEnv({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
     GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
     GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
