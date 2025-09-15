@@ -1,17 +1,32 @@
-import { db } from "@/server/db";
-import { betterAuth } from "better-auth";
-import { nextCookies } from "better-auth/next-js";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-
 import { env } from "@/env";
+import { db } from "@/server/db";
+import { betterAuth, type User } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
+import { prismaAdapter, type PrismaConfig } from "better-auth/adapters/prisma";
+import { sendResetEmail } from "./send-reset-email";
+
+const provider = "postgresql" as PrismaConfig["provider"];
+
 export const auth = betterAuth({
-  database: prismaAdapter(db, {
-    provider: "postgresql",
-  }),
+  database: prismaAdapter(db, { provider }),
   emailAndPassword: {
     enabled: true,
     resetPasswordTokenExpiresIn: 3600, // 1 hour
     autoSignIn: false,
+    async sendResetPassword({
+      user,
+      url,
+    }: {
+      user: User;
+      url: string;
+    }): Promise<void> {
+      try {
+        await sendResetEmail(user, url);
+      } catch (error) {
+        console.error("Password reset email failed:", error);
+        throw new Error("Failed to send reset email. Please try again.");
+      }
+    },
   },
   socialProviders: {
     github: {
