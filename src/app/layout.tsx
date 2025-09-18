@@ -5,6 +5,7 @@ import { geist } from "./fonts";
 
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { Header } from "@/components/layout/header";
 
 export const metadata: Metadata = {
   title: "Twigg",
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={cn(geist.variable, "antialiased")}>
       <body>
+        <Header />
         {children}
         <Toaster position="bottom-right" expand={false} richColors={true} />
       </body>
