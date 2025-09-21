@@ -10,16 +10,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Auth models for user management
 model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @default(now()) @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id                String             @id
+  name              String
+  email             String
+  emailVerified     Boolean            @default(false)
+  image             String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @default(now()) @updatedAt
+  sessions          Session[]
+  accounts          Account[]
+  financialAccounts FinancialAccount[]
+  transactions      Transaction[]
+  budgets           Budget[]
 
   @@unique([email])
   @@map("user")
@@ -68,4 +72,82 @@ model Verification {
   updatedAt  DateTime @default(now()) @updatedAt
 
   @@map("verification")
+}
+
+// Business models
+model FinancialAccount {
+  id           String               @id @default(uuid())
+  name         String
+  type         FinancialAccountType
+  balance      Decimal              @default(0) // will ask inital balance while creating an financialAccount
+  isDefault    Boolean              @default(false)
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@index([userId])
+  @@map("financialAccounts")
+}
+
+model Transaction {
+  id                 String             @id @default(uuid())
+  type               TransactionType
+  amount             Decimal
+  description        String?
+  date               DateTime
+  category           String
+  receiptUrl         String?
+  isRecurring        Boolean            @default(false)
+  recurringInterval  RecurringInterval? // Only used if isRecurring is true
+  nextRecurringDate  DateTime? // Next date for recurring transaction
+  lastProcessed      DateTime? // Last time this recurring transaction was processed
+  status             TransactionStatus  @default(COMPLETED)
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialAccountId String
+  financialAccount   FinancialAccount   @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([financialAccountId])
+  @@map("transactions")
+}
+
+model Budget {
+  id            String    @id @default(uuid())
+  amount        Decimal
+  lastAlertSent DateTime? // Track when the last alert was sent
+  userId        String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("budgets")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum FinancialAccountType {
+  CURRENT
+  SAVINGS
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum RecurringInterval {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }
