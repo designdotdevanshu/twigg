@@ -30,6 +30,9 @@ export const env = createEnv({
     DISCORD_CLIENT_SECRET: z
       .string()
       .min(1, "DISCORD_CLIENT_SECRET is required"),
+    GEMINI_API_KEY: z.string().min(1, "GEMINI_API_KEY is required"),
+    GEMINI_MODEL_PRIMARY: z.string().default("gemini-2.0-flash-lite"),
+    GEMINI_MODEL_FALLBACK: z.string().default("gemini-2.0-flash"),
   },
 
   /**
@@ -61,6 +64,9 @@ export const env = createEnv({
     FACEBOOK_CLIENT_SECRET: process.env.FACEBOOK_CLIENT_SECRET,
     DISCORD_CLIENT_ID: process.env.DISCORD_CLIENT_ID,
     DISCORD_CLIENT_SECRET: process.env.DISCORD_CLIENT_SECRET,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    GEMINI_MODEL_PRIMARY: process.env.GEMINI_MODEL_PRIMARY,
+    GEMINI_MODEL_FALLBACK: process.env.GEMINI_MODEL_FALLBACK,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
