@@ -5,9 +5,9 @@ function AccountChartLoader() {
   return (
     <>
       {/* main */}
-      <div className="flex items-end justify-between gap-4">
+      <div className="mb-8 flex items-end justify-between gap-4">
         <div>
-          <Skeleton className="h-10 w-48 sm:w-64" />
+          <Skeleton className="h-15 w-48 sm:w-64" />
           <Skeleton className="mt-2 h-4 w-32" />
         </div>
 
