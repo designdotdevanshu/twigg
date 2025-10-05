@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -14,16 +13,27 @@ import {
 import { getUserSession } from "@/lib/auth";
 import { env } from "@/env";
 
-/* ----------------------------- AI SETUP ----------------------------- */
+/* ----------------------------- CONFIG -------------------------------- */
 
-const GEMINI_API_KEY = env.GEMINI_API_KEY;
-const PRIMARY_MODEL = env.GEMINI_MODEL_PRIMARY ?? "gemini-2.0-flash-lite";
-const FALLBACK_MODEL = env.GEMINI_MODEL_FALLBACK ?? "gemini-2.0-flash";
-
+const { GEMINI_API_KEY, GEMINI_MODEL_PRIMARY, GEMINI_MODEL_FALLBACK } = env;
+if (!GEMINI_API_KEY && GEMINI_API_KEY === undefined) {
+  // fallback guard for weird env resolution - keep original error messaging
+}
 if (!GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not configured.");
 }
+
+const PRIMARY_MODEL = GEMINI_MODEL_PRIMARY ?? "gemini-2.0-flash-lite";
+const FALLBACK_MODEL = GEMINI_MODEL_FALLBACK ?? "gemini-2.0-flash";
 const AI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+const ALLOWED_MIME = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "application/pdf",
+]);
+const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB
 
 /* ----------------------------- TYPES -------------------------------- */
 
@@ -95,24 +105,30 @@ export type GetUserTransactionsParams = {
   pageSize?: number; // default 20
 };
 
-/* ----------------------------- UTILS -------------------------------- */
+/* ----------------------------- UTIL HELPERS ------------------------- */
 
-const toDecimal = (v: DecimalLike) =>
-  v instanceof Prisma.Decimal ? v : new Prisma.Decimal(v);
+function toDecimal(v: DecimalLike): Prisma.Decimal {
+  return v instanceof Prisma.Decimal ? v : new Prisma.Decimal(v);
+}
 
-/** Recursively convert Prisma.Decimal to number for JSON safety. */
+/** Safely serialize nested Prisma.Decimal -> number and keep Date as Date for consumer code. */
 function serializeDecimals<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
   if (obj instanceof Date) return obj as unknown as T;
   if (obj instanceof Prisma.Decimal) return obj.toNumber() as unknown as T;
-  if (Array.isArray(obj)) return obj.map(serializeDecimals) as unknown as T;
+
+  if (Array.isArray(obj)) {
+    return obj.map((v) => serializeDecimals(v)) as unknown as T;
+  }
+
   if (typeof obj === "object") {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj)) {
-      out[k] = serializeDecimals(v);
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      out[k] = serializeDecimals(v as T);
     }
     return out as T;
   }
+
   return obj;
 }
 
@@ -125,19 +141,7 @@ function assert(condition: unknown, msg: string): asserts condition {
   if (!condition) throw new Error(msg);
 }
 
-async function ensureAccountOwnedByUser(
-  accountId: string,
-  userId: string,
-  tx: Prisma.TransactionClient = db,
-) {
-  const fa = await tx.financialAccount.findFirst({
-    where: { id: accountId, userId },
-    select: { id: true },
-  });
-  assert(fa, "FinancialAccount not found");
-}
-
-/** Calculate the next recurring date from startDate given interval. */
+/** Calculate the next recurring date from startDate given interval. Pure and testable. */
 function calculateNextRecurringDate(
   startDate: Date,
   interval: RecurringInterval,
@@ -151,6 +155,7 @@ function calculateNextRecurringDate(
       d.setDate(d.getDate() + 7);
       break;
     case "MONTHLY":
+      // keep same day of month semantics; Date will auto-carry if invalid
       d.setMonth(d.getMonth() + 1);
       break;
     case "YEARLY":
@@ -158,6 +163,39 @@ function calculateNextRecurringDate(
       break;
   }
   return d;
+}
+
+/* ----------------------------- DB HELPERS --------------------------- */
+
+/**
+ * Throws if the financial account is not owned by the user.
+ * Accepts an optional tx client to be used inside transactions.
+ */
+async function ensureAccountOwnedByUser(
+  accountId: string,
+  userId: string,
+  tx: Prisma.TransactionClient = db,
+) {
+  const fa = await tx.financialAccount.findFirst({
+    where: { id: accountId, userId },
+    select: { id: true },
+  });
+  assert(fa, "FinancialAccount not found");
+}
+
+/**
+ * Adjust account balance using an atomic update. Accepts a Prisma.Decimal delta.
+ * Keeps the single responsibility of balance updates in one place.
+ */
+async function adjustAccountBalance(
+  tx: Prisma.TransactionClient,
+  accountId: string,
+  delta: Prisma.Decimal,
+) {
+  await tx.financialAccount.update({
+    where: { id: accountId },
+    data: { balance: { increment: delta } },
+  });
 }
 
 /* ----------------------------- ACTIONS ------------------------------ */
@@ -169,12 +207,20 @@ export async function createTransaction(
   const parsed = createTransactionSchema.parse(input);
   const { id: userId } = await getUserSession();
 
-  // Verify the account belongs to user
+  // Ensure account belongs to user
   await ensureAccountOwnedByUser(parsed.financialAccountId, userId);
 
   const balanceChange = signAmount(parsed.type, parsed.amount);
 
   const created = await db.$transaction(async (tx) => {
+    const nextRecurring =
+      parsed.isRecurring && parsed.recurringInterval
+        ? calculateNextRecurringDate(
+            new Date(parsed.date),
+            parsed.recurringInterval,
+          )
+        : null;
+
     const newTransaction = await tx.transaction.create({
       data: {
         userId,
@@ -187,26 +233,18 @@ export async function createTransaction(
         receiptUrl: parsed.receiptUrl ?? null,
         isRecurring: parsed.isRecurring,
         recurringInterval: parsed.recurringInterval ?? null,
-        nextRecurringDate:
-          parsed.isRecurring && parsed.recurringInterval
-            ? calculateNextRecurringDate(
-                new Date(parsed.date),
-                parsed.recurringInterval,
-              )
-            : null,
+        nextRecurringDate: nextRecurring,
         status: parsed.status,
       },
     });
 
-    // Increment account balance without reading it first (prevents race)
-    await tx.financialAccount.update({
-      where: { id: parsed.financialAccountId },
-      data: { balance: { increment: balanceChange } },
-    });
+    // Increment account balance atomically without a prior read
+    await adjustAccountBalance(tx, parsed.financialAccountId, balanceChange);
 
     return newTransaction;
   });
 
+  // revalidate relevant pages
   revalidatePath("/dashboard");
   revalidatePath(`/financialAccount/${created.financialAccountId}`);
 
@@ -220,7 +258,6 @@ export async function createTransaction(
 export async function getTransaction(id: string): Promise<Transaction | null> {
   const { id: userId } = await getUserSession();
 
-  // Use findFirst to enforce user scope even if no composite unique
   const tx = await db.transaction.findFirst({
     where: { id, userId },
   });
@@ -229,6 +266,7 @@ export async function getTransaction(id: string): Promise<Transaction | null> {
   return serializeDecimals(tx) as unknown as Transaction;
 }
 
+/** Update transaction with correct balance adjustments (handles account moves). */
 export async function updateTransaction(
   id: string,
   payload: UpdateTransactionInput,
@@ -243,11 +281,19 @@ export async function updateTransaction(
     });
     assert(original, "Transaction not found");
 
-    // Validate ownership of target account too
+    // Ensure target account is owned by user
     await ensureAccountOwnedByUser(data.financialAccountId, userId, tx);
 
     const oldChange = signAmount(original.type, original.amount.toNumber());
     const newChange = signAmount(data.type, data.amount);
+
+    const nextRecurring =
+      data.isRecurring && data.recurringInterval
+        ? calculateNextRecurringDate(
+            new Date(data.date),
+            data.recurringInterval,
+          )
+        : null;
 
     // Update transaction row first
     const updated = await tx.transaction.update({
@@ -259,13 +305,7 @@ export async function updateTransaction(
         isRecurring: data.isRecurring,
         recurringInterval: data.recurringInterval ?? null,
         date: new Date(data.date),
-        nextRecurringDate:
-          data.isRecurring && data.recurringInterval
-            ? calculateNextRecurringDate(
-                new Date(data.date),
-                data.recurringInterval,
-              )
-            : null,
+        nextRecurringDate: nextRecurring,
         description: data.description ?? original.description,
         category: data.category ?? original.category,
         receiptUrl: data.receiptUrl ?? original.receiptUrl,
@@ -277,31 +317,25 @@ export async function updateTransaction(
       original.financialAccountId !== data.financialAccountId;
 
     if (accountChanged) {
-      // Reverse old impact on old account
-      await tx.financialAccount.update({
-        where: { id: original.financialAccountId },
-        data: { balance: { increment: oldChange.mul(-1) } },
-      });
+      // Reverse original impact on old account
+      await adjustAccountBalance(
+        tx,
+        original.financialAccountId,
+        oldChange.mul(-1),
+      );
       // Apply new impact on new account
-      await tx.financialAccount.update({
-        where: { id: data.financialAccountId },
-        data: { balance: { increment: newChange } },
-      });
+      await adjustAccountBalance(tx, data.financialAccountId, newChange);
     } else {
       // Same account: apply delta
       const delta = newChange.sub(oldChange);
       if (!delta.eq(0)) {
-        await tx.financialAccount.update({
-          where: { id: data.financialAccountId },
-          data: { balance: { increment: delta } },
-        });
+        await adjustAccountBalance(tx, data.financialAccountId, delta);
       }
     }
 
     return updated;
   });
 
-  // Revalidate both accounts if changed
   revalidatePath("/dashboard");
   revalidatePath(`/financialAccount/${updatedTx.financialAccountId}`);
 
@@ -343,14 +377,11 @@ const ScannedReceiptSchema = z.object({
 
 export type ScannedReceipt = z.infer<typeof ScannedReceiptSchema>;
 
-const ALLOWED_MIME = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "application/pdf",
-]);
-const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8 MB
-
+/**
+ * Run a single model scan. Returns parsed JSON or {} on parse failure.
+ * This isolates the parsing logic and prevents crashes when Gemini wraps results
+ * in markdown or returns partial text.
+ */
 async function runGeminiScan(
   modelId: string,
   base64: string,
@@ -362,16 +393,26 @@ async function runGeminiScan(
     model: modelId,
     generationConfig: { temperature: 0, maxOutputTokens: 512 },
   });
+
   const res = await model.generateContent([
     { inlineData: { data: base64, mimeType: mime } },
     prompt,
   ]);
-  const raw = res.response
-    .text()
-    .trim()
+
+  // response.text() may include ```json blocks or extra text. Clean and try parse.
+  const raw = res.response.text().trim();
+  const cleaned = raw
     .replace(/^```(?:json)?/i, "")
-    .replace(/```$/, "");
-  return JSON.parse(raw || "{}");
+    .replace(/```$/, "")
+    .trim();
+
+  try {
+    // parse guarded
+    return JSON.parse(cleaned || "{}");
+  } catch {
+    // graceful fallback to empty object (caller will decide)
+    return {};
+  }
 }
 
 export async function scanReceipt(formData: FormData): Promise<ScannedReceipt> {
@@ -381,7 +422,7 @@ export async function scanReceipt(formData: FormData): Promise<ScannedReceipt> {
   assert(ALLOWED_MIME.has(file.type), "Unsupported file type");
   assert(file.size <= MAX_FILE_BYTES, "File too large");
 
-  // Convert to base64 (no logging sensitive data)
+  // Convert to base64
   const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
 
   const prompt = `
@@ -395,15 +436,15 @@ Analyze this receipt image and extract the following information in JSON format:
 
 Only respond with valid JSON in this exact format:
 {
-"amount": number,
-"date": "ISO date string",
-"description": "string",
-"merchantName": "string",
-"category": "string"
+  "amount": number,
+  "date": "ISO date string",
+  "description": "string",
+  "merchantName": "string",
+  "category": "string"
 }
 
-If its not a recipt, return an empty object
-  `.trim();
+If it's not a receipt, return an empty object.
+`.trim();
 
   try {
     let parsed = await runGeminiScan(
@@ -413,6 +454,7 @@ If its not a recipt, return an empty object
       prompt,
       AI,
     );
+
     const isEmpty =
       parsed &&
       typeof parsed === "object" &&
@@ -423,10 +465,10 @@ If its not a recipt, return an empty object
       isEmpty ||
       (typeof parsed === "object" &&
         parsed !== null &&
-        parsed.amount == null) ||
-      (typeof parsed === "object" && parsed !== null && !parsed.date)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        (parsed.amount == null || !parsed.date))
     ) {
-      // fallback for tougher receipts
+      // fallback on second model for tougher receipts
       parsed = await runGeminiScan(
         FALLBACK_MODEL,
         base64,
@@ -436,9 +478,10 @@ If its not a recipt, return an empty object
       );
     }
 
-    // validate + normalize as you already do with Zod
+    // enforce schema + coercions
     return ScannedReceiptSchema.parse(parsed);
   } catch (error) {
+    // keep a single, explicit error message for callers to handle.
     console.error("Failed to scan receipt:", error);
     throw new Error("Failed to scan receipt");
   }
