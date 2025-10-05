@@ -130,3 +130,29 @@
     @apply cursor-pointer;
   }
 }
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Add this class */
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientMove 3s ease infinite;
+}
+
+@utility gradient {
+  @apply bg-linear-to-br from-blue-600 to-purple-600;
+}
+
+@utility gradient-title {
+  @apply gradient bg-clip-text text-3xl font-extrabold tracking-tighter text-transparent;
+}
