@@ -6,6 +6,7 @@ import { asyncHandler } from "@/lib/utils";
 import { getUserSession } from "@/lib/auth";
 import { handleError, serializeDecimal } from "@/lib/utils";
 import type { FinancialAccount } from "@prisma/client";
+import type { Transaction } from "./transaction";
 
 export async function getUserAccounts(): Promise<FinancialAccount[]> {
   try {
@@ -74,4 +75,28 @@ export async function createAccount(data: FinancialAccount) {
     revalidatePath("/dashboard");
     return serializedAccount;
   });
+}
+
+export async function getDashboardData(): Promise<Transaction[]> {
+  try {
+    const user = await getUserSession();
+
+    if (!user?.id) {
+      throw new Error("User not authenticated");
+    }
+
+    const userId = user.id;
+
+    // Get all user transactions
+    const transactions = await db.transaction.findMany({
+      where: { userId },
+      orderBy: { date: "desc" },
+    });
+
+    return (await Promise.all(
+      transactions.map(serializeDecimal),
+    )) as unknown as Transaction[];
+  } catch (error) {
+    return handleError(error);
+  }
 }
