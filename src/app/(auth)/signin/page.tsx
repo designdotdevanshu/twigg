@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Image from "next/image";
 import { SigninForm } from "@/components/auth/signin-form";
 
 export default function LoginPage() {
@@ -14,9 +15,10 @@ export default function LoginPage() {
         </div>
       </div>
       <div className="bg-muted relative hidden lg:block">
-        <img
-          src="/placeholder.svg"
+        <Image
+          fill
           alt="Image"
+          src="/placeholder.svg"
           className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
         />
       </div>

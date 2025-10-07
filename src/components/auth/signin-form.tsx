@@ -1,15 +1,13 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { signIn } from "@/lib/auth-client";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
-import SocialLogin from "@/components/auth/social-login";
+import { signIn } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { AuthButton } from "./auth-button";
 import {
   Form,
@@ -18,7 +16,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import SocialLogin from "@/components/auth/social-login";
 
 const schema = z.object({
   email: z
@@ -32,7 +32,7 @@ const schema = z.object({
   password: z
     .string()
     .min(8, "Password is too short")
-    .regex(/[A-Z]/, "Password must contain at least one inpercase letter") // Inpercase letter
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter") // Uppercase letter
     .regex(/[a-z]/, "Password must contain at least one lowercase letter") // Lowercase letter
     .regex(/[0-9]/, "Password must contain at least one digit") // Number
     .regex(
@@ -133,7 +133,7 @@ export function SigninForm({
                   <FormLabel htmlFor="password">Password</FormLabel>
                   <Link
                     href="/forgot-password"
-                    className="ml-auto text-sm underline-offset-4 hover:underline"
+                    className="ml-auto text-sm underline underline-offset-4"
                   >
                     Forgot your password?
                   </Link>
@@ -161,7 +161,10 @@ export function SigninForm({
         </div>
         <div className="text-center text-sm">
           Don&apos;t have an account?{" "}
-          <Link href="/signup" className="underline underline-offset-4">
+          <Link
+            href={`/signup${callbackURL ? `?redirectTo=${encodeURIComponent(callbackURL)}` : ""}`}
+            className="underline underline-offset-4"
+          >
             Sign up
           </Link>
         </div>

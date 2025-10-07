@@ -1,8 +1,8 @@
 import * as React from "react";
-import { Loader2 } from "lucide-react";
-import { Button } from "../ui/button";
 import type { FieldValues, FormState } from "react-hook-form";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 const loadingText = (
   type: "Sign in" | "Sign up" | "Reset Password" | "Send Reset Link",
@@ -56,7 +56,7 @@ const AuthButton = React.forwardRef<
       <>
         {formState?.isSubmitting ? (
           <p className={cn("flex items-center justify-center gap-x-2")}>
-            <Loader2 className={cn("animate-spin")} /> {loadingText(type)}
+            <Spinner /> {loadingText(type)}
           </p>
         ) : (
           <>{type} &rarr;</>

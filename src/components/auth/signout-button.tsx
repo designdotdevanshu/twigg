@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
 import { LogOutIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export function LogoutButton() {
   const { handleLogout } = useAuth();

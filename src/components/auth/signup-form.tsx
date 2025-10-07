@@ -1,14 +1,13 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/input";
-import { signUp } from "@/lib/auth-client";
+import Link from "next/link";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
-import SocialLogin from "@/components/auth/social-login";
+import { signUp } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import { AuthButton } from "./auth-button";
 import {
   Form,
   FormControl,
@@ -16,8 +15,9 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../ui/form";
-import { AuthButton } from "./auth-button";
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import SocialLogin from "@/components/auth/social-login";
 
 const schema = z.object({
   name: z
