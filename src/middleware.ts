@@ -18,6 +18,13 @@ export async function middleware(request: NextRequest) {
     "/profile",
   ];
 
+  // Handle root path
+  if (pathname === "/") {
+    return sessionCookie
+      ? NextResponse.redirect(new URL("/dashboard", request.url))
+      : NextResponse.redirect(new URL("/signin", request.url));
+  }
+
   // If authenticated, block access to auth pages
   if (sessionCookie && authRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -38,6 +45,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard",
     "/dashboard/:path*",
     "/transaction/:path*",
