@@ -18,10 +18,19 @@ const CURRENCY = {
 
 // function to format currency
 const formatCurrency = (value: unknown): string => {
-  if (typeof value !== "number") {
-    value = Number(value);
+  let numberValue: number;
+
+  if (typeof value === "number") {
+    numberValue = value;
+  } else {
+    numberValue = Number(value);
+    if (isNaN(numberValue)) return `${CURRENCY.SYMBOL}0.00`;
   }
-  return `${CURRENCY.SYMBOL}${(value as number).toFixed(CURRENCY.PRECISION)}`;
+
+  return `${CURRENCY.SYMBOL}${new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: CURRENCY.PRECISION,
+    maximumFractionDigits: CURRENCY.PRECISION,
+  }).format(numberValue)}`;
 };
 
 export { COLORS, CURRENCY, formatCurrency };
