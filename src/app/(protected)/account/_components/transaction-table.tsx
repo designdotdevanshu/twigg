@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -58,7 +59,6 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
-  Loader2,
   MoreHorizontal,
   RefreshCw,
   Search,
@@ -303,7 +303,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
             >
               {deleteLoading ? (
                 <>
-                  <Loader2 size={20} className="animate-spin" />
+                  <Spinner size={20} />
                   Deleting...
                 </>
               ) : (

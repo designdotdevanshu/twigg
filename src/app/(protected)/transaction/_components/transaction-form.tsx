@@ -8,7 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
 import { format } from "date-fns";
 
-import { CalendarIcon, Loader2 } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -49,6 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 
 type AddTransactionFormProps = {
@@ -179,9 +180,17 @@ export function AddTransactionForm({
                 <FormControl>
                   <Input
                     type="number"
+                    step="0.01"
+                    min="0"
                     placeholder="0.00"
                     {...field}
-                    value={field.value || ""}
+                    value={field.value}
+                    onChange={({ target }) => {
+                      const { value } = target;
+                      if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
+                        field.onChange(value);
+                      }
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -379,7 +388,7 @@ export function AddTransactionForm({
           <Button type="submit" className="w-1/2" disabled={transactionLoading}>
             {transactionLoading ? (
               <>
-                <Loader2 className="size-4 animate-spin" />
+                <Spinner size={16} />
                 {editMode ? "Updating..." : "Creating..."}
               </>
             ) : editMode ? (

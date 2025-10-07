@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { useFetch } from "@/hooks/use-fetch";
 import { scanReceipt } from "@/actions/transaction";
 import { Button } from "@/components/ui/button";
-import { Camera, Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
+import { Camera } from "lucide-react";
 
 export function ReceiptScanner({
   onScanComplete,
@@ -73,7 +74,7 @@ export function ReceiptScanner({
       >
         {scanReceiptLoading ? (
           <>
-            <Loader2 className="animate-spin" />
+            <Spinner />
             <span>Scanning Receipt...</span>
           </>
         ) : (

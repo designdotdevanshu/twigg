@@ -36,7 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 type CreateAccountDrawerProps = {
   open?: boolean;
@@ -123,7 +123,7 @@ export function CreateAccountDrawer({
                       defaultValue={field.value}
                     >
                       <FormControl>
-                        <SelectTrigger id="type">
+                        <SelectTrigger id="type" className="w-full">
                           <SelectValue placeholder="Select account type" />
                         </SelectTrigger>
                       </FormControl>
@@ -201,7 +201,7 @@ export function CreateAccountDrawer({
                 >
                   {createAccountLoading ? (
                     <>
-                      <Loader2 className="size-4 animate-spin" />
+                      <Spinner size={16} />
                       Creating...
                     </>
                   ) : (
