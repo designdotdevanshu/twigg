@@ -128,3 +128,40 @@ export async function bulkDeleteTransactions(transactionIds: string[]) {
     return handleError(error);
   }
 }
+
+export async function updateDefaultAccount(
+  id: string,
+): Promise<AccountResponse | null> {
+  try {
+    const user = await getUserSession();
+
+    if (!user?.id) {
+      throw new Error("User not authenticated");
+    }
+
+    const userId = user.id;
+
+    // First, unset any existing default account
+    await db.financialAccount.updateMany({
+      where: {
+        userId,
+        isDefault: true,
+      },
+      data: { isDefault: false },
+    });
+
+    // Then set the new default account
+    const account = await db.financialAccount.update({
+      where: { id, userId },
+      data: { isDefault: true },
+    });
+
+    revalidatePath("/dashboard");
+    return {
+      success: true,
+      data: serializeDecimal(account) as unknown as AccountResponse["data"],
+    };
+  } catch (error) {
+    return handleError(error);
+  }
+}
