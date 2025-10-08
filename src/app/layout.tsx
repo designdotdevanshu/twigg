@@ -6,6 +6,7 @@ import { geist } from "./fonts";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/layout/header";
+import { ThemeProvider } from "@/providers/theme-provider";
 
 export const metadata: Metadata = {
   title: "Twigg",
@@ -17,11 +18,17 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={cn(geist.variable, "antialiased")}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={cn(geist.variable, "scrollbar-thin overflow-auto antialiased")}
+    >
       <body>
-        <Header />
-        {children}
-        <Toaster position="bottom-right" expand={false} richColors={true} />
+        <ThemeProvider>
+          <Header />
+          {children}
+          <Toaster position="bottom-right" expand={false} richColors={true} />
+        </ThemeProvider>
       </body>
     </html>
   );
