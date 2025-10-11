@@ -9,8 +9,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { LayoutDashboard, PenBox, Settings2Icon } from "lucide-react";
-import { ThemeToggle } from "../theme-toggle";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { LayoutDashboard, PenBox } from "lucide-react";
 
 export async function Header() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -86,7 +86,7 @@ export async function Header() {
                 <ThemeToggle />
 
                 {/* Manage Account */}
-                <Button
+                {/* <Button
                   size="lg"
                   variant="ghost"
                   className="h-14 w-full items-center justify-start gap-5 rounded-none border-b border-gray-200 p-4 px-8 text-xs font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
@@ -95,7 +95,7 @@ export async function Header() {
                   <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                     Manage Account
                   </span>
-                </Button>
+                </Button> */}
 
                 {/* Logout */}
                 <LogoutButton />
