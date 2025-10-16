@@ -25,7 +25,7 @@ export async function getUserAccounts(): Promise<FinancialAccount[]> {
     });
 
     // Serialize accounts before sending to client
-    return await Promise.all(accounts.map(serializeDecimal));
+    return accounts.map(serializeDecimal);
   } catch (error) {
     return handleError(error);
   }
@@ -93,9 +93,7 @@ export async function getDashboardData(): Promise<Transaction[]> {
       orderBy: { date: "desc" },
     });
 
-    return (await Promise.all(
-      transactions.map(serializeDecimal),
-    )) as unknown as Transaction[];
+    return transactions.map(serializeDecimal) as unknown as Transaction[];
   } catch (error) {
     return handleError(error);
   }
