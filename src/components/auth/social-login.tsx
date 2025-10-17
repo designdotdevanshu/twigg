@@ -8,19 +8,17 @@ import { Spinner } from "@/components/ui/spinner";
 
 import {
   IconBrandDiscord,
-  IconBrandFacebook,
   IconBrandGithub,
   IconBrandGoogle,
 } from "@tabler/icons-react";
 
-type Provider = "github" | "google" | "facebook" | "discord";
+type Provider = "github" | "google" | "discord";
 
 const PROVIDERS: Record<Provider, { label: string; icon: React.ElementType }> =
   {
     github: { label: "Github", icon: IconBrandGithub },
     google: { label: "Google", icon: IconBrandGoogle },
-    facebook: { label: "Facebook", icon: IconBrandFacebook },
-    discord: { label: "Facebook", icon: IconBrandDiscord },
+    discord: { label: "Discord", icon: IconBrandDiscord },
   };
 
 async function signInWithProvider(
@@ -73,7 +71,6 @@ function SocialLogin() {
       <Suspense fallback={<div>Loading...</div>}>
         <ProviderLogin provider="github" />
         <ProviderLogin provider="google" />
-        <ProviderLogin provider="facebook" />
         <ProviderLogin provider="discord" />
       </Suspense>
     </div>
