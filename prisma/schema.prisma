@@ -12,18 +12,16 @@ datasource db {
 
 // Auth models for user management
 model User {
-  id                String             @id
-  name              String
-  email             String
-  emailVerified     Boolean            @default(false)
-  image             String?
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @default(now()) @updatedAt
-  sessions          Session[]
-  accounts          Account[]
-  financialAccounts FinancialAccount[]
-  transactions      Transaction[]
-  budgets           Budget[]
+  id            String      @id
+  name          String
+  email         String
+  emailVerified Boolean     @default(false)
+  image         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @default(now()) @updatedAt
+  sessions      Session[]
+  accounts      Account[]
+  workspaces    Workspace[]
 
   @@unique([email])
   @@map("user")
@@ -74,21 +72,60 @@ model Verification {
   @@map("verification")
 }
 
-// Business models
+// Workspace model for multi-mode (Personal / Business) isolation
+model Workspace {
+  id                String             @id @default(uuid())
+  name              String
+  type              WorkspaceType      @default(PERSONAL)
+  currency          String             @default("USD")
+  isDefault         Boolean            @default(false)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialAccounts FinancialAccount[]
+  transactions      Transaction[]
+  budgets           Budget[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@index([userId])
+  @@map("workspaces")
+}
+
+// Business & Financial models
 model FinancialAccount {
   id           String               @id @default(uuid())
   name         String
   type         FinancialAccountType
-  balance      Decimal              @default(0) // will ask inital balance while creating an financialAccount
+  balance      Decimal              @default(0) // initial/running balance
   isDefault    Boolean              @default(false)
-  userId       String
-  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId  String
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  pockets      Pocket[]
   transactions Transaction[]
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
-  @@index([userId])
+  @@index([workspaceId])
   @@map("financialAccounts")
+}
+
+// Pockets: Sub-allocation / purpose-driven containers inside an account
+model Pocket {
+  id                 String           @id @default(uuid())
+  name               String
+  description        String?
+  goalAmount         Decimal?
+  currentBalance     Decimal          @default(0)
+  color              String? // Hex or theme color for badge/progress
+  icon               String? // Icon identifier
+  financialAccountId String
+  financialAccount   FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+  transactions       Transaction[]
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  @@index([financialAccountId])
+  @@map("pockets")
 }
 
 model Transaction {
@@ -100,33 +137,41 @@ model Transaction {
   category           String
   receiptUrl         String?
   isRecurring        Boolean            @default(false)
-  recurringInterval  RecurringInterval? // Only used if isRecurring is true
-  nextRecurringDate  DateTime? // Next date for recurring transaction
-  lastProcessed      DateTime? // Last time this recurring transaction was processed
+  recurringInterval  RecurringInterval?
+  nextRecurringDate  DateTime?
+  lastProcessed      DateTime?
   status             TransactionStatus  @default(COMPLETED)
-  userId             String
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId        String
+  workspace          Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   financialAccountId String
   financialAccount   FinancialAccount   @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+  pocketId           String?
+  pocket             Pocket?            @relation(fields: [pocketId], references: [id], onDelete: SetNull)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  @@index([userId])
+  @@index([workspaceId])
   @@index([financialAccountId])
+  @@index([pocketId])
   @@map("transactions")
 }
 
 model Budget {
   id            String    @id @default(uuid())
   amount        Decimal
-  lastAlertSent DateTime? // Track when the last alert was sent
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastAlertSent DateTime?
+  workspaceId   String    @unique
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  @@index([userId])
+  @@index([workspaceId])
   @@map("budgets")
+}
+
+enum WorkspaceType {
+  PERSONAL
+  BUSINESS
 }
 
 enum TransactionType {
