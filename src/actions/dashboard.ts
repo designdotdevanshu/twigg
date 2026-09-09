@@ -2,38 +2,66 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/server/db";
-import { asyncHandler } from "@/lib/utils";
+import { asyncHandler, handleError, serializeDecimal } from "@/lib/utils";
 import { getUserSession } from "@/lib/auth";
-import { handleError, serializeDecimal } from "@/lib/utils";
-import type { FinancialAccount } from "@prisma/client";
+import type { FinancialAccount, Pocket } from "@prisma/client";
 import type { Transaction } from "./transaction";
+import type { AccountInput } from "@/lib/schema";
 
-export async function getUserAccounts(): Promise<FinancialAccount[]> {
+export type FinancialAccountWithRelations = FinancialAccount & {
+  pockets?: Pocket[];
+  _count?: {
+    transactions: number;
+    pockets: number;
+  };
+};
+
+export async function getUserAccounts(
+  workspaceId: string,
+): Promise<FinancialAccountWithRelations[]> {
   try {
-    const { id: userId } = await getUserSession();
+    const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    // Verify user owns workspace
+    const workspace = await db.workspace.findFirst({
+      where: { id: workspaceId, userId: user.id },
+    });
+
+    if (!workspace) return [];
 
     const accounts = await db.financialAccount.findMany({
-      where: { userId },
+      where: { workspaceId },
       orderBy: { createdAt: "desc" },
       include: {
+        pockets: {
+          orderBy: { createdAt: "asc" },
+        },
         _count: {
           select: {
             transactions: true,
+            pockets: true,
           },
         },
       },
     });
 
-    // Serialize accounts before sending to client
     return accounts.map(serializeDecimal);
   } catch (error) {
     return handleError(error);
   }
 }
 
-export async function createAccount(data: FinancialAccount) {
+export async function createAccount(data: AccountInput, workspaceId: string) {
   return asyncHandler(async function (): Promise<FinancialAccount> {
-    const { id: userId } = await getUserSession();
+    const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    const workspace = await db.workspace.findFirst({
+      where: { id: workspaceId, userId: user.id },
+    });
+
+    if (!workspace) throw new Error("Workspace not found or access denied");
 
     // Convert balance to float before saving
     const balanceFloat = Number(data.balance);
@@ -41,20 +69,18 @@ export async function createAccount(data: FinancialAccount) {
       throw new Error("Invalid balance amount");
     }
 
-    // Check if this is the user's first account
+    // Check if this is the workspace's first account
     const existingAccounts = await db.financialAccount.findMany({
-      where: { userId },
+      where: { workspaceId },
     });
 
-    // If it's the first account, make it default regardless of user input
-    // If not, use the user's preference
     const shouldBeDefault =
       existingAccounts.length === 0 ? true : data.isDefault;
 
-    // If this account should be default, unset other default accounts
+    // If this account should be default, unset other default accounts in this workspace
     if (shouldBeDefault) {
       await db.financialAccount.updateMany({
-        where: { userId, isDefault: true },
+        where: { workspaceId, isDefault: true },
         data: { isDefault: false },
       });
     }
@@ -62,35 +88,41 @@ export async function createAccount(data: FinancialAccount) {
     // Create new account
     const account = await db.financialAccount.create({
       data: {
-        ...data,
-        userId,
+        name: data.name,
+        type: data.type,
+        workspaceId,
         balance: balanceFloat,
-        isDefault: shouldBeDefault, // Override the isDefault based on our logic
+        isDefault: shouldBeDefault,
       },
     });
 
-    // Serialize the account before returning
-    const serializedAccount = serializeDecimal(account);
-
-    revalidatePath("/dashboard");
-    return serializedAccount;
+    revalidatePath("/[workspaceId]/dashboard", "page");
+    return serializeDecimal(account);
   });
 }
 
-export async function getDashboardData(): Promise<Transaction[]> {
+export async function getDashboardData(
+  workspaceId: string,
+): Promise<Transaction[]> {
   try {
     const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
 
-    if (!user?.id) {
-      throw new Error("User not authenticated");
-    }
-
-    const userId = user.id;
-
-    // Get all user transactions
     const transactions = await db.transaction.findMany({
-      where: { userId },
+      where: {
+        workspaceId,
+        workspace: { userId: user.id },
+      },
+      include: {
+        financialAccount: {
+          select: { id: true, name: true },
+        },
+        pocket: {
+          select: { id: true, name: true, color: true },
+        },
+      },
       orderBy: { date: "desc" },
+      take: 50,
     });
 
     return transactions.map(serializeDecimal) as unknown as Transaction[];

@@ -16,9 +16,6 @@ import { env } from "@/env";
 /* ----------------------------- CONFIG -------------------------------- */
 
 const { GEMINI_API_KEY, GEMINI_MODEL_PRIMARY, GEMINI_MODEL_FALLBACK } = env;
-if (!GEMINI_API_KEY && GEMINI_API_KEY === undefined) {
-  // fallback guard for weird env resolution - keep original error messaging
-}
 if (!GEMINI_API_KEY) {
   throw new Error("GEMINI_API_KEY is not configured.");
 }
@@ -50,8 +47,18 @@ export interface Transaction {
   nextRecurringDate: Date | null;
   lastProcessed: Date | null;
   status: TransactionStatus;
-  userId: string;
+  workspaceId: string;
   financialAccountId: string;
+  pocketId: string | null;
+  pocket?: {
+    id: string;
+    name: string;
+    color: string | null;
+  } | null;
+  financialAccount?: {
+    id: string;
+    name: string;
+  } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +75,7 @@ type DecimalLike = Prisma.Decimal | number | string;
 const createTransactionSchema = z.object({
   type: z.nativeEnum(TransactionType),
   financialAccountId: z.string().min(1),
+  pocketId: z.string().nullable().optional(),
   amount: z.number().finite(),
   description: z.string().nullable().optional(),
   date: z.union([z.date(), z.string().transform((s) => new Date(s))]),
@@ -75,12 +83,13 @@ const createTransactionSchema = z.object({
   receiptUrl: z.string().url().nullable().optional(),
   isRecurring: z.boolean().default(false),
   recurringInterval: z.nativeEnum(RecurringInterval).nullable().optional(),
-  status: z.nativeEnum(TransactionStatus).default("PENDING"),
+  status: z.nativeEnum(TransactionStatus).default("COMPLETED"),
 });
 
 const updateTransactionSchema = z.object({
   type: z.nativeEnum(TransactionType),
   financialAccountId: z.string().min(1),
+  pocketId: z.string().nullable().optional(),
   amount: z.number().finite(),
   isRecurring: z.boolean().default(false),
   recurringInterval: z.nativeEnum(RecurringInterval).nullable().optional(),
@@ -91,45 +100,15 @@ const updateTransactionSchema = z.object({
   status: z.nativeEnum(TransactionStatus).optional(),
 });
 
-export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
-export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
+export type CreateTransactionInput = z.input<typeof createTransactionSchema>;
+export type UpdateTransactionInput = z.input<typeof updateTransactionSchema>;
 
-export type GetUserTransactionsParams = {
-  financialAccountId?: string;
-  type?: TransactionType;
-  status?: TransactionStatus;
-  category?: string;
-  from?: Date | string;
-  to?: Date | string;
-  page?: number;
-  pageSize?: number; // default 20
-};
+import { serializeDecimal } from "@/lib/utils";
 
 /* ----------------------------- UTIL HELPERS ------------------------- */
 
 function toDecimal(v: DecimalLike): Prisma.Decimal {
   return v instanceof Prisma.Decimal ? v : new Prisma.Decimal(v);
-}
-
-/** Safely serialize nested Prisma.Decimal -> number and keep Date as Date for consumer code. */
-function serializeDecimals<T>(obj: T): T {
-  if (obj === null || obj === undefined) return obj;
-  if (obj instanceof Date) return obj as unknown as T;
-  if (obj instanceof Prisma.Decimal) return obj.toNumber() as unknown as T;
-
-  if (Array.isArray(obj)) {
-    return obj.map((v) => serializeDecimals(v)) as unknown as T;
-  }
-
-  if (typeof obj === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      out[k] = serializeDecimals(v as T);
-    }
-    return out as T;
-  }
-
-  return obj;
 }
 
 function signAmount(type: TransactionType, amount: number): Prisma.Decimal {
@@ -141,7 +120,6 @@ function assert(condition: unknown, msg: string): asserts condition {
   if (!condition) throw new Error(msg);
 }
 
-/** Calculate the next recurring date from startDate given interval. Pure and testable. */
 function calculateNextRecurringDate(
   startDate: Date,
   interval: RecurringInterval,
@@ -155,7 +133,6 @@ function calculateNextRecurringDate(
       d.setDate(d.getDate() + 7);
       break;
     case "MONTHLY":
-      // keep same day of month semantics; Date will auto-carry if invalid
       d.setMonth(d.getMonth() + 1);
       break;
     case "YEARLY":
@@ -167,26 +144,19 @@ function calculateNextRecurringDate(
 
 /* ----------------------------- DB HELPERS --------------------------- */
 
-/**
- * Throws if the financial account is not owned by the user.
- * Accepts an optional tx client to be used inside transactions.
- */
 async function ensureAccountOwnedByUser(
   accountId: string,
   userId: string,
   tx: Prisma.TransactionClient = db,
 ) {
   const fa = await tx.financialAccount.findFirst({
-    where: { id: accountId, userId },
-    select: { id: true },
+    where: { id: accountId, workspace: { userId } },
+    select: { id: true, workspaceId: true },
   });
-  assert(fa, "FinancialAccount not found");
+  assert(fa, "Financial account not found or unauthorized");
+  return fa;
 }
 
-/**
- * Adjust account balance using an atomic update. Accepts a Prisma.Decimal delta.
- * Keeps the single responsibility of balance updates in one place.
- */
 async function adjustAccountBalance(
   tx: Prisma.TransactionClient,
   accountId: string,
@@ -198,17 +168,42 @@ async function adjustAccountBalance(
   });
 }
 
+async function adjustPocketBalance(
+  tx: Prisma.TransactionClient,
+  pocketId: string,
+  delta: Prisma.Decimal,
+) {
+  await tx.pocket.update({
+    where: { id: pocketId },
+    data: { currentBalance: { increment: delta } },
+  });
+}
+
 /* ----------------------------- ACTIONS ------------------------------ */
 
-/** Create Transaction (race-safe balance update; computes nextRecurringDate). */
+/** Create Transaction (atomic balance updates for both account and optional pocket). */
 export async function createTransaction(
   input: CreateTransactionInput,
 ): Promise<TransactionResponse> {
   const parsed = createTransactionSchema.parse(input);
   const { id: userId } = await getUserSession();
 
-  // Ensure account belongs to user
-  await ensureAccountOwnedByUser(parsed.financialAccountId, userId);
+  // Ensure account belongs to user and retrieve workspaceId
+  const account = await ensureAccountOwnedByUser(
+    parsed.financialAccountId,
+    userId,
+  );
+
+  // If pocketId provided, ensure it belongs to this account
+  if (parsed.pocketId) {
+    const pocket = await db.pocket.findFirst({
+      where: {
+        id: parsed.pocketId,
+        financialAccountId: parsed.financialAccountId,
+      },
+    });
+    assert(pocket, "Pocket does not belong to selected account");
+  }
 
   const balanceChange = signAmount(parsed.type, parsed.amount);
 
@@ -223,9 +218,10 @@ export async function createTransaction(
 
     const newTransaction = await tx.transaction.create({
       data: {
-        userId,
+        workspaceId: account.workspaceId,
         type: parsed.type,
         financialAccountId: parsed.financialAccountId,
+        pocketId: parsed.pocketId ?? null,
         amount: toDecimal(parsed.amount),
         description: parsed.description ?? null,
         date: new Date(parsed.date),
@@ -236,37 +232,57 @@ export async function createTransaction(
         nextRecurringDate: nextRecurring,
         status: parsed.status,
       },
+      include: {
+        pocket: {
+          select: { id: true, name: true, color: true },
+        },
+        financialAccount: {
+          select: { id: true, name: true },
+        },
+      },
     });
 
-    // Increment account balance atomically without a prior read
+    // Update account balance
     await adjustAccountBalance(tx, parsed.financialAccountId, balanceChange);
+
+    // Update pocket balance if assigned
+    if (parsed.pocketId) {
+      await adjustPocketBalance(tx, parsed.pocketId, balanceChange);
+    }
 
     return newTransaction;
   });
 
-  // revalidate relevant pages
-  revalidatePath("/dashboard");
-  revalidatePath(`/financialAccount/${created.financialAccountId}`);
+  revalidatePath("/[workspaceId]/dashboard", "page");
+  revalidatePath("/[workspaceId]/account/[id]", "page");
 
   return {
     success: true,
-    data: serializeDecimals(created) as unknown as Transaction,
+    data: serializeDecimal(created) as unknown as Transaction,
   };
 }
 
-/** Get single transaction, scoped to user. */
+/** Get single transaction, scoped to user workspace. */
 export async function getTransaction(id: string): Promise<Transaction | null> {
   const { id: userId } = await getUserSession();
 
   const tx = await db.transaction.findFirst({
-    where: { id, userId },
+    where: { id, workspace: { userId } },
+    include: {
+      pocket: {
+        select: { id: true, name: true, color: true },
+      },
+      financialAccount: {
+        select: { id: true, name: true },
+      },
+    },
   });
   assert(tx, "Transaction not found");
 
-  return serializeDecimals(tx) as unknown as Transaction;
+  return serializeDecimal(tx) as unknown as Transaction;
 }
 
-/** Update transaction with correct balance adjustments (handles account moves). */
+/** Update transaction with atomic balance adjustments for account and pocket. */
 export async function updateTransaction(
   id: string,
   payload: UpdateTransactionInput,
@@ -276,13 +292,25 @@ export async function updateTransaction(
 
   const updatedTx = await db.$transaction(async (tx) => {
     const original = await tx.transaction.findFirst({
-      where: { id, userId },
-      include: { financialAccount: { select: { id: true } } },
+      where: { id, workspace: { userId } },
     });
     assert(original, "Transaction not found");
 
-    // Ensure target account is owned by user
-    await ensureAccountOwnedByUser(data.financialAccountId, userId, tx);
+    const targetAccount = await ensureAccountOwnedByUser(
+      data.financialAccountId,
+      userId,
+      tx,
+    );
+
+    if (data.pocketId) {
+      const p = await tx.pocket.findFirst({
+        where: {
+          id: data.pocketId,
+          financialAccountId: data.financialAccountId,
+        },
+      });
+      assert(p, "Target pocket does not belong to selected account");
+    }
 
     const oldChange = signAmount(original.type, original.amount.toNumber());
     const newChange = signAmount(data.type, data.amount);
@@ -295,12 +323,13 @@ export async function updateTransaction(
           )
         : null;
 
-    // Update transaction row first
     const updated = await tx.transaction.update({
       where: { id },
       data: {
         type: data.type,
+        workspaceId: targetAccount.workspaceId,
         financialAccountId: data.financialAccountId,
+        pocketId: data.pocketId ?? null,
         amount: toDecimal(data.amount),
         isRecurring: data.isRecurring,
         recurringInterval: data.recurringInterval ?? null,
@@ -311,37 +340,51 @@ export async function updateTransaction(
         receiptUrl: data.receiptUrl ?? original.receiptUrl,
         status: data.status ?? original.status,
       },
+      include: {
+        pocket: { select: { id: true, name: true, color: true } },
+        financialAccount: { select: { id: true, name: true } },
+      },
     });
 
-    const accountChanged =
-      original.financialAccountId !== data.financialAccountId;
-
-    if (accountChanged) {
-      // Reverse original impact on old account
+    // Handle account balance adjustments
+    if (original.financialAccountId !== data.financialAccountId) {
       await adjustAccountBalance(
         tx,
         original.financialAccountId,
         oldChange.mul(-1),
       );
-      // Apply new impact on new account
       await adjustAccountBalance(tx, data.financialAccountId, newChange);
     } else {
-      // Same account: apply delta
       const delta = newChange.sub(oldChange);
       if (!delta.eq(0)) {
         await adjustAccountBalance(tx, data.financialAccountId, delta);
       }
     }
 
+    // Handle pocket balance adjustments
+    if (original.pocketId !== data.pocketId) {
+      if (original.pocketId) {
+        await adjustPocketBalance(tx, original.pocketId, oldChange.mul(-1));
+      }
+      if (data.pocketId) {
+        await adjustPocketBalance(tx, data.pocketId, newChange);
+      }
+    } else if (data.pocketId) {
+      const delta = newChange.sub(oldChange);
+      if (!delta.eq(0)) {
+        await adjustPocketBalance(tx, data.pocketId, delta);
+      }
+    }
+
     return updated;
   });
 
-  revalidatePath("/dashboard");
-  revalidatePath(`/financialAccount/${updatedTx.financialAccountId}`);
+  revalidatePath("/[workspaceId]/dashboard", "page");
+  revalidatePath("/[workspaceId]/account/[id]", "page");
 
   return {
     success: true,
-    data: serializeDecimals(updatedTx) as unknown as Transaction,
+    data: serializeDecimal(updatedTx) as unknown as Transaction,
   };
 }
 
@@ -377,11 +420,6 @@ const ScannedReceiptSchema = z.object({
 
 export type ScannedReceipt = z.infer<typeof ScannedReceiptSchema>;
 
-/**
- * Run a single model scan. Returns parsed JSON or {} on parse failure.
- * This isolates the parsing logic and prevents crashes when Gemini wraps results
- * in markdown or returns partial text.
- */
 async function runGeminiScan(
   modelId: string,
   base64: string,
@@ -399,7 +437,6 @@ async function runGeminiScan(
     prompt,
   ]);
 
-  // response.text() may include ```json blocks or extra text. Clean and try parse.
   const raw = res.response.text().trim();
   const cleaned = raw
     .replace(/^```(?:json)?/i, "")
@@ -407,10 +444,8 @@ async function runGeminiScan(
     .trim();
 
   try {
-    // parse guarded
     return JSON.parse(cleaned || "{}");
   } catch {
-    // graceful fallback to empty object (caller will decide)
     return {};
   }
 }
@@ -418,11 +453,9 @@ async function runGeminiScan(
 export async function scanReceipt(formData: FormData): Promise<ScannedReceipt> {
   const file = formData.get("file") as File | null;
   assert(file, "No file provided");
-
   assert(ALLOWED_MIME.has(file.type), "Unsupported file type");
   assert(file.size <= MAX_FILE_BYTES, "File too large");
 
-  // Convert to base64
   const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
 
   const prompt = `
@@ -465,10 +498,9 @@ If it's not a receipt, return an empty object.
       isEmpty ||
       (typeof parsed === "object" &&
         parsed !== null &&
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        (parsed.amount == null || !parsed.date))
+        ((parsed as Record<string, unknown>).amount == null ||
+          !(parsed as Record<string, unknown>).date))
     ) {
-      // fallback on second model for tougher receipts
       parsed = await runGeminiScan(
         FALLBACK_MODEL,
         base64,
@@ -478,10 +510,8 @@ If it's not a receipt, return an empty object.
       );
     }
 
-    // enforce schema + coercions
     return ScannedReceiptSchema.parse(parsed);
   } catch (error) {
-    // keep a single, explicit error message for callers to handle.
     console.error("Failed to scan receipt:", error);
     throw new Error("Failed to scan receipt");
   }

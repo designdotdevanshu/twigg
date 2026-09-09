@@ -8,7 +8,7 @@ interface Budget {
   id: string;
   amount: number;
   lastAlertSent: Date | null;
-  userId: string;
+  workspaceId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -19,19 +19,18 @@ export interface GetCurrentUserBudgetResponse {
 }
 
 export async function getCurrentBudget(
-  financialAccountId: string,
+  workspaceId: string,
+  financialAccountId?: string,
 ): Promise<GetCurrentUserBudgetResponse> {
   try {
     const user = await getUserSession();
-
-    if (!user?.id) {
-      throw new Error("User not authenticated");
-    }
-
-    const userId = user.id;
+    if (!user?.id) throw new Error("User not authenticated");
 
     const budget = await db.budget.findFirst({
-      where: { userId },
+      where: {
+        workspaceId,
+        workspace: { userId: user.id },
+      },
     });
 
     // Get current month's expenses
@@ -47,16 +46,22 @@ export async function getCurrentBudget(
       0,
     );
 
-    const expenses = await db.transaction.aggregate({
-      where: {
-        userId,
-        type: "EXPENSE",
-        date: {
-          gte: startOfMonth,
-          lte: endOfMonth,
-        },
-        financialAccountId,
+    const whereClause: Record<string, unknown> = {
+      workspaceId,
+      workspace: { userId: user.id },
+      type: "EXPENSE",
+      date: {
+        gte: startOfMonth,
+        lte: endOfMonth,
       },
+    };
+
+    if (financialAccountId) {
+      whereClause.financialAccountId = financialAccountId;
+    }
+
+    const expenses = await db.transaction.aggregate({
+      where: whereClause,
       _sum: {
         amount: true,
       },
@@ -74,28 +79,31 @@ export async function getCurrentBudget(
   }
 }
 
-export async function updateBudget(amount: number): Promise<{
+export async function updateBudget(
+  workspaceId: string,
+  amount: number,
+): Promise<{
   success: boolean;
   data?: Budget;
   error?: string;
 }> {
   try {
     const user = await getUserSession();
+    if (!user?.id) throw new Error("User not authenticated");
 
-    if (!user?.id) {
-      throw new Error("User not authenticated");
-    }
+    // Verify workspace ownership
+    const ws = await db.workspace.findFirst({
+      where: { id: workspaceId, userId: user.id },
+    });
+    if (!ws) throw new Error("Workspace not found");
 
-    const userId = user.id;
-
-    // Update or create budget
     const budget = await db.budget.upsert({
-      where: { userId },
+      where: { workspaceId },
       update: { amount },
-      create: { userId, amount },
+      create: { workspaceId, amount },
     });
 
-    revalidatePath("/dashboard");
+    revalidatePath("/[workspaceId]/dashboard", "page");
     return {
       success: true,
       data: { ...budget, amount: budget.amount.toNumber() },
