@@ -25,16 +25,42 @@ export async function asyncHandler<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-// Serialize Prisma Decimal fields (safe copy)
-export function serializeDecimal<T extends Record<string, any>>(obj: T): T {
-  const serialized: any = { ...obj };
-
-  if ("balance" in obj && obj.balance?.toNumber) {
-    serialized.balance = obj.balance.toNumber();
-  }
-  if ("amount" in obj && obj.amount?.toNumber) {
-    serialized.amount = obj.amount.toNumber();
+// Deeply serialize Prisma Decimal fields (safe copy for Next.js Flight/RSC)
+export function serializeDecimal<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
   }
 
-  return serialized;
+  // Check for Prisma Decimal or any Decimal-like object with toNumber()
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "toNumber" in (data as any) &&
+    typeof (data as any).toNumber === "function"
+  ) {
+    return (data as any).toNumber() as unknown as T;
+  }
+
+  // Handle Arrays
+  if (Array.isArray(data)) {
+    return data.map((item) => serializeDecimal(item)) as unknown as T;
+  }
+
+  // Preserve Dates
+  if (data instanceof Date) {
+    return data;
+  }
+
+  // Handle plain objects
+  if (typeof data === "object") {
+    const serialized: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      serialized[key] = serializeDecimal(value);
+    }
+    return serialized as T;
+  }
+
+  return data;
 }
+
+export { formatCurrency } from "./constant";

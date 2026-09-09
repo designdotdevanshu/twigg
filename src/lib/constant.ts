@@ -9,28 +9,40 @@ const COLORS = [
 ];
 
 const CURRENCY = {
-  // CODE: "USD",
-  // SYMBOL: "$",
   CODE: "INR",
   SYMBOL: "₹",
   PRECISION: 2,
 };
 
-// function to format currency
-const formatCurrency = (value: unknown): string => {
+// Function to format currency with proper negative sign placement and dynamic currency code
+const formatCurrency = (value: unknown, currencyCode = "INR"): string => {
   let numberValue: number;
 
   if (typeof value === "number") {
     numberValue = value;
   } else {
     numberValue = Number(value);
-    if (isNaN(numberValue)) return `${CURRENCY.SYMBOL}0.00`;
+    if (isNaN(numberValue)) {
+      numberValue = 0;
+    }
   }
 
-  return `${CURRENCY.SYMBOL}${new Intl.NumberFormat("en-IN", {
-    minimumFractionDigits: CURRENCY.PRECISION,
-    maximumFractionDigits: CURRENCY.PRECISION,
-  }).format(numberValue)}`;
+  const validCode =
+    currencyCode?.length === 3 ? currencyCode.toUpperCase() : "INR";
+  const locale = validCode === "INR" ? "en-IN" : "en-US";
+
+  try {
+    return new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency: validCode,
+      minimumFractionDigits: CURRENCY.PRECISION,
+      maximumFractionDigits: CURRENCY.PRECISION,
+    }).format(numberValue);
+  } catch {
+    const prefix = validCode === "INR" ? "₹" : "$";
+    const sign = numberValue < 0 ? "-" : "";
+    return `${sign}${prefix}${Math.abs(numberValue).toFixed(CURRENCY.PRECISION)}`;
+  }
 };
 
 export { COLORS, CURRENCY, formatCurrency };
