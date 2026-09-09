@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { z } from "zod";
-import { useFetch } from "@/hooks/use-fetch";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,17 +36,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { useWorkspace } from "@/providers/workspace-provider";
 
 type CreateAccountDrawerProps = {
   open?: boolean;
+  workspaceId?: string;
   children: React.ReactNode;
 };
 
 export function CreateAccountDrawer({
   open = false,
+  workspaceId: propWorkspaceId,
   children,
 }: CreateAccountDrawerProps) {
   const [isOpen, setIsOpen] = useState(open);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const workspaceContext = useWorkspace();
+  const activeWorkspaceId =
+    propWorkspaceId ?? workspaceContext?.currentWorkspace?.id;
+
   const form = useForm<z.infer<typeof accountSchema>>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
@@ -58,41 +65,37 @@ export function CreateAccountDrawer({
     },
   });
 
-  const {
-    loading: createAccountLoading,
-    fn: createAccountFn,
-    error,
-    data: newAccount,
-  } = useFetch(createAccount);
-
   const onSubmit = async (data: z.infer<typeof accountSchema>) => {
-    await createAccountFn(data);
+    if (!activeWorkspaceId) {
+      toast.error("No active workspace found");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await createAccount(data, activeWorkspaceId);
+      if (res) {
+        toast.success("Account created successfully");
+        form.reset();
+        setIsOpen(false);
+      }
+    } catch (err) {
+      toast.error((err as Error).message || "Failed to create account");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-
-  useEffect(() => {
-    if (newAccount) {
-      toast.success("Account created successfully");
-      form.reset();
-      setIsOpen(false);
-    }
-  }, [newAccount, form]);
-
-  useEffect(() => {
-    if (error) {
-      toast.error(error.message || "Failed to create account");
-    }
-  }, [error]);
 
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerTrigger asChild>{children}</DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>
-          <DrawerTitle>Create New Account</DrawerTitle>
+          <DrawerTitle>Create New Financial Account</DrawerTitle>
         </DrawerHeader>
-        <div className="px-4 pb-4">
+        <div className="mx-auto w-full max-w-lg px-4 pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="name"
@@ -102,9 +105,9 @@ export function CreateAccountDrawer({
                     <FormControl>
                       <Input
                         id="name"
-                        placeholder="Account Name"
+                        placeholder="e.g. Primary Checking, Chase Savings, Mercury Ops"
                         {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -128,7 +131,9 @@ export function CreateAccountDrawer({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="CURRENT">Current</SelectItem>
+                        <SelectItem value="CURRENT">
+                          Current / Checking
+                        </SelectItem>
                         <SelectItem value="SAVINGS">Savings</SelectItem>
                       </SelectContent>
                     </Select>
@@ -142,7 +147,7 @@ export function CreateAccountDrawer({
                 name="balance"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Initial Balance (in {CURRENCY.CODE})</FormLabel>
+                    <FormLabel>Initial Balance ({CURRENCY.CODE})</FormLabel>
                     <FormControl>
                       <Input
                         id="balance"
@@ -150,7 +155,7 @@ export function CreateAccountDrawer({
                         step="0.01"
                         placeholder="0.00"
                         {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
                       />
                     </FormControl>
                     <FormMessage />
@@ -158,16 +163,17 @@ export function CreateAccountDrawer({
                 )}
               />
 
-              <div className="mt-10 flex items-center justify-between rounded-lg border p-3">
+              <div className="border-border/80 flex items-center justify-between rounded-lg border p-3">
                 <div className="space-y-0.5">
                   <FormLabel
                     htmlFor="isDefault"
-                    className="cursor-pointer text-base"
+                    className="cursor-pointer text-sm font-medium"
                   >
-                    Set as Default
+                    Set as Default Account
                   </FormLabel>
-                  <FormDescription className="text-sm">
-                    This account will be selected by default for transactions
+                  <FormDescription className="text-xs">
+                    This account will be selected by default when recording new
+                    transactions
                   </FormDescription>
                 </div>
                 <FormField
@@ -188,7 +194,7 @@ export function CreateAccountDrawer({
                 />
               </div>
 
-              <div className="flex gap-4 pt-4">
+              <div className="flex gap-3 pt-3">
                 <DrawerClose asChild>
                   <Button type="button" variant="outline" className="flex-1">
                     Cancel
@@ -197,9 +203,9 @@ export function CreateAccountDrawer({
                 <Button
                   type="submit"
                   className="flex-1"
-                  disabled={createAccountLoading}
+                  disabled={isSubmitting}
                 >
-                  {createAccountLoading ? (
+                  {isSubmitting ? (
                     <>
                       <Spinner size={16} />
                       Creating...
