@@ -191,7 +191,7 @@ export function DashboardOverview({
                     <ChartTooltipContent
                       hideLabel
                       formatter={(value, name) =>
-                        `${name}: ${formatCurrency(value as number)}`
+                        `${name}: ${formatCurrency(value)}`
                       }
                     />
                   }

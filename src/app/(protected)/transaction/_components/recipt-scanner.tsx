@@ -55,6 +55,8 @@ export function ReceiptScanner({
   return (
     <div className="flex items-center gap-4">
       <input
+        id="receipt-file-upload"
+        name="receipt-file-upload"
         type="file"
         ref={fileInputRef}
         className="hidden"
@@ -68,19 +70,21 @@ export function ReceiptScanner({
       <Button
         type="button"
         variant="outline"
-        className="animate-gradient h-10 w-full bg-gradient-to-br from-orange-500 via-pink-500 to-purple-500 text-white transition-opacity hover:text-white hover:opacity-90"
+        className="border-primary/20 bg-primary/5 text-foreground hover:bg-primary/10 hover:border-primary/40 h-11 w-full gap-2 font-medium shadow-xs transition"
         onClick={() => fileInputRef.current?.click()}
         disabled={scanReceiptLoading}
       >
         {scanReceiptLoading ? (
           <>
-            <Spinner />
-            <span>Scanning Receipt...</span>
+            <Spinner size={16} />
+            <span className="text-xs">Processing Receipt with AI...</span>
           </>
         ) : (
           <>
-            <Camera className="" />
-            <span>Scan Receipt with AI</span>
+            <Camera className="text-primary h-4 w-4" />
+            <span className="text-xs font-semibold">
+              Scan & Auto-Fill Receipt with AI
+            </span>
           </>
         )}
       </Button>

@@ -30,6 +30,7 @@ import type { Transaction } from "@/actions/transaction";
 
 interface AccountChartProps {
   transactions: Transaction[];
+  currency?: string;
 }
 
 const DATE_RANGES = {
@@ -52,7 +53,10 @@ const chartConfig = {
   },
 };
 
-export function AccountChart({ transactions }: AccountChartProps) {
+export function AccountChart({
+  transactions,
+  currency = "INR",
+}: AccountChartProps) {
   const [dateRange, setDateRange] = useState<keyof typeof DATE_RANGES>("1M");
 
   const filteredData = useMemo(() => {
@@ -128,13 +132,13 @@ export function AccountChart({ transactions }: AccountChartProps) {
           <div className="text-center">
             <p className="text-muted-foreground">Total Income</p>
             <p className="text-lg font-bold text-green-500">
-              {formatCurrency(totals.income)}
+              {formatCurrency(totals.income, currency)}
             </p>
           </div>
           <div className="text-center">
             <p className="text-muted-foreground">Total Expenses</p>
             <p className="text-lg font-bold text-red-500">
-              {formatCurrency(totals.expense)}
+              {formatCurrency(totals.expense, currency)}
             </p>
           </div>
           <div className="text-center">
@@ -146,7 +150,7 @@ export function AccountChart({ transactions }: AccountChartProps) {
                   : "text-red-500"
               }`}
             >
-              {formatCurrency(totals.income - totals.expense)}
+              {formatCurrency(totals.income - totals.expense, currency)}
             </p>
           </div>
         </div>

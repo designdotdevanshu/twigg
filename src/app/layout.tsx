@@ -5,12 +5,12 @@ import { geist } from "./fonts";
 
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
-import { Header } from "@/components/layout/header";
 import { ThemeProvider } from "@/providers/theme-provider";
 
 export const metadata: Metadata = {
-  title: "Twigg",
-  description: "AI-powered personal finance manager",
+  title: "Twigg - Modern Personal & Business Finance",
+  description:
+    "Unified finance platform for personal pockets, budgeting, and business operations.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
@@ -23,9 +23,8 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(geist.variable, "scrollbar-thin overflow-auto antialiased")}
     >
-      <body>
+      <body className="bg-background text-foreground min-h-screen antialiased">
         <ThemeProvider>
-          <Header />
           {children}
           <Toaster position="bottom-right" expand={false} richColors={true} />
         </ThemeProvider>

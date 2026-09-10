@@ -11,30 +11,11 @@ export async function middleware(request: NextRequest) {
     "/forgot-password",
     "/reset-password",
   ];
-  const protectedRoutes = [
-    "/dashboard",
-    "/transaction",
-    "/account",
-    "/profile",
-  ];
 
-  // Handle root path
-  if (pathname === "/") {
-    return sessionCookie
-      ? NextResponse.redirect(new URL("/dashboard", request.url))
-      : NextResponse.redirect(new URL("/signin", request.url));
-  }
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
-  // If authenticated, block access to auth pages
-  if (sessionCookie && authRoutes.some((route) => pathname.startsWith(route))) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // If unauthenticated, block access to protected pages
-  if (
-    !sessionCookie &&
-    protectedRoutes.some((route) => pathname.startsWith(route))
-  ) {
+  // If unauthenticated and attempting to access protected routes, redirect to signin
+  if (!sessionCookie && !isAuthRoute && pathname !== "/") {
     const redirectUrl = new URL("/signin", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname + search);
     return NextResponse.redirect(redirectUrl);
@@ -45,16 +26,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/",
-    "/dashboard",
-    "/dashboard/:path*",
-    "/transaction/:path*",
-    "/account/:path*",
-    "/profile/:path*",
-    "/auth/:path*",
-    "/signin",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
 };

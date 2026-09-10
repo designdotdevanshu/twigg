@@ -64,10 +64,13 @@ import {
   Search,
   Trash,
   X,
+  Layers,
 } from "lucide-react";
 
 interface TransactionTableProps {
   transactions: Transaction[];
+  workspaceId?: string;
+  currency?: string;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -79,7 +82,11 @@ const RECURRING_INTERVALS = {
   YEARLY: "Yearly",
 };
 
-export function TransactionTable({ transactions }: TransactionTableProps) {
+export function TransactionTable({
+  transactions,
+  workspaceId,
+  currency = "INR",
+}: TransactionTableProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState({
     field: "date",
@@ -397,7 +404,29 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                   <TableCell>
                     {format(new Date(transaction.date), "PP")}
                   </TableCell>
-                  <TableCell>{transaction.description}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-foreground font-medium">
+                        {transaction.description ?? "Untitled Transaction"}
+                      </span>
+                      {transaction.pocket ? (
+                        <span
+                          className="inline-flex w-fit items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                          style={{
+                            backgroundColor: `${transaction.pocket.color ?? "#0ea5e9"}18`,
+                            color: transaction.pocket.color ?? "#0ea5e9",
+                          }}
+                        >
+                          <Layers className="size-2.5" />
+                          {transaction.pocket.name}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground/60 text-[10px]">
+                          Direct Account
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="capitalize">
                     <span
                       style={{
@@ -417,7 +446,7 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                     )}
                   >
                     {transaction.type === "EXPENSE" ? "-" : "+"}
-                    {formatCurrency(transaction.amount)}
+                    {formatCurrency(transaction.amount, currency)}
                   </TableCell>
                   <TableCell>
                     {transaction.isRecurring &&
@@ -468,11 +497,12 @@ export function TransactionTable({ transactions }: TransactionTableProps) {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() =>
-                            router.push(
-                              `/transaction/create?edit=${transaction.id}`,
-                            )
-                          }
+                          onClick={() => {
+                            const editUrl = workspaceId
+                              ? `/${workspaceId}/transaction/create?edit=${transaction.id}`
+                              : `/transaction/create?edit=${transaction.id}`;
+                            router.push(editUrl);
+                          }}
                         >
                           Edit
                         </DropdownMenuItem>
