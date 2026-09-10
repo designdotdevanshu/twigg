@@ -38,7 +38,7 @@ export function serializeDecimal<T>(data: T): T {
     "toNumber" in (data as any) &&
     typeof (data as any).toNumber === "function"
   ) {
-    return (data as any).toNumber() as unknown as T;
+    return (data as any).toNumber();
   }
 
   // Handle Arrays

@@ -5,7 +5,7 @@ import { db } from "@/server/db";
 import { getUserSession } from "@/lib/auth";
 import { handleError, serializeDecimal } from "@/lib/utils";
 import { workspaceSchema, type WorkspaceInput } from "@/lib/schema";
-import type { Workspace, WorkspaceType } from "@prisma/client";
+import type { Workspace } from "@prisma/client";
 
 export type WorkspaceWithMeta = Workspace & {
   _count?: {
@@ -90,7 +90,7 @@ export async function createWorkspace(
     const created = await db.workspace.create({
       data: {
         name: parsed.name,
-        type: parsed.type as WorkspaceType,
+        type: parsed.type,
         currency: parsed.currency ?? "USD",
         isDefault: isFirst,
         userId: user.id,
