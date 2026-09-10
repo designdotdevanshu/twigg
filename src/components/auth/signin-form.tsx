@@ -64,7 +64,7 @@ export function SigninForm({
   ...props
 }: React.ComponentProps<"form">) {
   const searchParams = useSearchParams();
-  const callbackURL = searchParams.get("redirectTo") ?? "/dashboard";
+  const callbackURL = searchParams.get("redirectTo") ?? "/";
 
   const form = useForm<SignInType>({
     resolver: zodResolver(schema),

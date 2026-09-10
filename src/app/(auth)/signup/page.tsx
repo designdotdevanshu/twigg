@@ -1,5 +1,6 @@
-import Image from "next/image";
+import { Suspense } from "react";
 import { SignupForm } from "@/components/auth/signup-form";
+import { AuthHeroPanel } from "@/components/auth/auth-hero-panel";
 
 export default function SignupPage() {
   return (
@@ -7,18 +8,17 @@ export default function SignupPage() {
       <div className="flex flex-col gap-4 p-6 md:p-10">
         <div className="flex flex-1 items-center justify-center">
           <div className="w-full max-w-sm">
-            <SignupForm />
+            <Suspense
+              fallback={
+                <div className="text-muted-foreground text-sm">Loading...</div>
+              }
+            >
+              <SignupForm />
+            </Suspense>
           </div>
         </div>
       </div>
-      <div className="bg-muted relative hidden lg:block">
-        <Image
-          fill
-          alt="Image"
-          src="/placeholder.svg"
-          className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-        />
-      </div>
+      <AuthHeroPanel />
     </div>
   );
 }

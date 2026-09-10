@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -67,6 +68,9 @@ export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"form">) {
+  const searchParams = useSearchParams();
+  const callbackURL = searchParams.get("redirectTo") ?? "/";
+
   const form = useForm<SignUpType>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -79,10 +83,11 @@ export function SignupForm({
   const onSubmit = async (payload: SignUpType) => {
     await signUp.email({
       ...payload,
-      callbackURL: "/dashboard",
+      callbackURL,
       fetchOptions: {
         onSuccess: () => {
           toast.success("Welcome to Twigg!");
+          window.location.href = callbackURL;
         },
         onError: ({ error }) => {
           const message = getAuthErrorMessage(error);
@@ -115,7 +120,7 @@ export function SignupForm({
                 <FormControl>
                   <Input
                     id="name"
-                    type="name"
+                    type="text"
                     autoComplete="name"
                     placeholder="Tyler Durden"
                     {...field}
