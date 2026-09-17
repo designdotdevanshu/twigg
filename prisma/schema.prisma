@@ -22,6 +22,8 @@ model User {
   sessions      Session[]
   accounts      Account[]
   workspaces    Workspace[]
+  upiIds        UserUpiId[]
+  paymentLinks  PaymentLink[]
 
   @@unique([email])
   @@map("user")
@@ -77,13 +79,14 @@ model Workspace {
   id                String             @id @default(uuid())
   name              String
   type              WorkspaceType      @default(PERSONAL)
-  currency          String             @default("USD")
+  currency          String             @default("INR")
   isDefault         Boolean            @default(false)
   userId            String
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   financialAccounts FinancialAccount[]
   transactions      Transaction[]
   budgets           Budget[]
+  customCategories  CustomCategory[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -159,14 +162,69 @@ model Transaction {
 model Budget {
   id            String    @id @default(uuid())
   amount        Decimal
+  category      String    @default("GLOBAL") // "GLOBAL" for workspace-wide, or category name e.g. "Food"
   lastAlertSent DateTime?
-  workspaceId   String    @unique
+  workspaceId   String
   workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  @@unique([workspaceId, category])
   @@index([workspaceId])
   @@map("budgets")
+}
+
+model CustomCategory {
+  id          String          @id @default(uuid())
+  name        String
+  type        TransactionType // INCOME or EXPENSE
+  color       String?
+  icon        String?
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("custom_categories")
+}
+
+model UserUpiId {
+  id           String        @id @default(uuid())
+  label        String        // e.g. "HDFC Primary", "GPay Personal"
+  vpa          String        // e.g. "devanshu@okhdfcbank"
+  isPrimary    Boolean       @default(false)
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentLinks PaymentLink[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([userId])
+  @@map("user_upi_ids")
+}
+
+model PaymentLink {
+  id          String     @id @default(uuid())
+  slug        String     @unique @default(uuid())
+  vpa         String
+  payeeName   String
+  amount      Decimal?
+  note        String?
+  views       Int        @default(0)
+  status      String     @default("ACTIVE") // ACTIVE, RECEIVED, ARCHIVED
+  userUpiIdId String?
+  userUpiId   UserUpiId? @relation(fields: [userUpiIdId], references: [id], onDelete: SetNull)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspaceId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([slug])
+  @@map("payment_links")
 }
 
 enum WorkspaceType {
