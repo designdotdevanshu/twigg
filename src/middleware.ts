@@ -5,17 +5,20 @@ export async function middleware(request: NextRequest) {
   const sessionCookie = getSessionCookie(request);
   const { pathname, search } = request.nextUrl;
 
-  const authRoutes = [
+  const publicRoutes = [
     "/signin",
     "/signup",
     "/forgot-password",
     "/reset-password",
+    "/pay",
   ];
 
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
+  const isPublicRoute = publicRoutes.some((route) =>
+    pathname.startsWith(route),
+  );
 
   // If unauthenticated and attempting to access protected routes, redirect to signin
-  if (!sessionCookie && !isAuthRoute && pathname !== "/") {
+  if (!sessionCookie && !isPublicRoute && pathname !== "/") {
     const redirectUrl = new URL("/signin", request.url);
     redirectUrl.searchParams.set("redirectTo", pathname + search);
     return NextResponse.redirect(redirectUrl);

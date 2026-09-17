@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/server/auth";
 import { getUserWorkspaces } from "@/actions/workspace";
 import { WorkspaceProvider } from "@/providers/workspace-provider";
-import { WorkspaceNav } from "@/components/layout/workspace-nav";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/app-sidebar";
+import { ContentHeader } from "@/components/layout/content-header";
+import { MobileHeader } from "@/components/layout/mobile-header";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { OnboardingModal } from "@/components/onboarding-modal";
 
 export const dynamic = "force-dynamic";
 
@@ -38,12 +43,37 @@ export default async function WorkspaceLayout({
       currentWorkspace={currentWorkspace}
       workspaces={workspaces}
     >
-      <div className="bg-background flex min-h-screen flex-col">
-        <WorkspaceNav user={session.user} />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          {children}
-        </main>
-      </div>
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": "16rem",
+            "--sidebar-width-icon": "3.5rem",
+          } as React.CSSProperties
+        }
+        className="h-svh overflow-hidden"
+      >
+        {/* Single AppSidebar */}
+        <AppSidebar user={session.user} />
+
+        {/* Fixed Application Shell */}
+        <SidebarInset className="bg-background flex h-svh w-full flex-1 flex-col overflow-hidden">
+          {/* Fixed Desktop Header */}
+          <ContentHeader />
+
+          {/* Fixed Mobile Top Bar */}
+          <MobileHeader />
+
+          {/* Main workspace content: The ONLY scrollable region */}
+          <main className="flex-1 overflow-y-auto px-4 py-6 pb-24 sm:px-6 md:pb-8 lg:px-8">
+            <div className="mx-auto max-w-7xl">{children}</div>
+          </main>
+
+          {/* Mobile Bottom Navigation Bar */}
+          <MobileBottomNav user={session.user} />
+        </SidebarInset>
+      </SidebarProvider>
+
+      <OnboardingModal userId={session.user.id} />
     </WorkspaceProvider>
   );
 }

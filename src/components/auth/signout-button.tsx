@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
-import { LogOutIcon } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function LogoutButton() {
@@ -9,15 +9,13 @@ export function LogoutButton() {
 
   return (
     <Button
-      size="lg"
+      size="sm"
       variant="ghost"
-      onClick={handleLogout}
-      className="h-14 w-full items-center justify-start gap-5 rounded-none border-b border-gray-200 p-4 px-8 text-xs font-medium hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
+      onClick={() => handleLogout()}
+      className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 gap-2 rounded-md px-2.5 text-xs font-medium transition-colors"
     >
-      <LogOutIcon className="h-2 w-2 text-gray-600 dark:text-gray-300" />
-      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-        Sign out
-      </span>
+      <LogOut className="size-3.5" />
+      <span>Sign out</span>
     </Button>
   );
 }

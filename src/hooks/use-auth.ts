@@ -5,17 +5,21 @@ import { authClient } from "@/lib/auth-client";
 
 export function useAuth() {
   const handleLogout = async () => {
-    const confirmLogout = window.confirm("Are you sure you want to log out?");
-    if (!confirmLogout) return;
-
-    await authClient.signOut({
-      fetchOptions: {
-        onSuccess: () => {
-          toast("You have been signed out.");
-          window.location.href = "/signin";
+    try {
+      await authClient.signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            toast.success("Signed out successfully");
+            window.location.href = "/signin";
+          },
+          onError: () => {
+            toast.error("Failed to sign out. Please try again.");
+          },
         },
-      },
-    });
+      });
+    } catch {
+      toast.error("Failed to sign out. Please try again.");
+    }
   };
 
   return { handleLogout };
