@@ -34,7 +34,7 @@ export async function getUserWorkspaces(): Promise<Workspace[]> {
         data: {
           name: "Personal",
           type: "PERSONAL",
-          currency: "USD",
+          currency: "INR",
           isDefault: true,
           userId: user.id,
         },
@@ -91,7 +91,7 @@ export async function createWorkspace(
       data: {
         name: parsed.name,
         type: parsed.type,
-        currency: parsed.currency ?? "USD",
+        currency: parsed.currency ?? "INR",
         isDefault: isFirst,
         userId: user.id,
       },
@@ -101,6 +101,116 @@ export async function createWorkspace(
     revalidatePath("/[workspaceId]", "layout");
 
     return { success: true, data: serializeDecimal(created) };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+/**
+ * Updates an existing Workspace (name, currency, type).
+ */
+export async function updateWorkspace(
+  workspaceId: string,
+  input: Partial<WorkspaceInput>,
+): Promise<{ success: boolean; data?: Workspace; error?: string }> {
+  try {
+    const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    const workspace = await db.workspace.findFirst({
+      where: { id: workspaceId, userId: user.id },
+    });
+    if (!workspace) throw new Error("Workspace not found");
+
+    const updated = await db.workspace.update({
+      where: { id: workspaceId },
+      data: {
+        ...(input.name ? { name: input.name } : {}),
+        ...(input.currency ? { currency: input.currency } : {}),
+        ...(input.type ? { type: input.type } : {}),
+      },
+    });
+
+    revalidatePath("/");
+    revalidatePath("/[workspaceId]", "layout");
+    revalidatePath(`/${workspaceId}/dashboard`);
+    revalidatePath(`/${workspaceId}/settings`);
+
+    return { success: true, data: serializeDecimal(updated) };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+/**
+ * Deletes a workspace (preventing deletion of the last remaining workspace).
+ */
+export async function deleteWorkspace(
+  workspaceId: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    const count = await db.workspace.count({
+      where: { userId: user.id },
+    });
+    if (count <= 1) {
+      throw new Error("Cannot delete your only workspace");
+    }
+
+    const ws = await db.workspace.findFirst({
+      where: { id: workspaceId, userId: user.id },
+    });
+    if (!ws) throw new Error("Workspace not found");
+
+    await db.workspace.delete({
+      where: { id: workspaceId },
+    });
+
+    // If deleting the default workspace, pick another one as default
+    if (ws.isDefault) {
+      const another = await db.workspace.findFirst({
+        where: { userId: user.id },
+        orderBy: { createdAt: "asc" },
+      });
+      if (another) {
+        await db.workspace.update({
+          where: { id: another.id },
+          data: { isDefault: true },
+        });
+      }
+    }
+
+    revalidatePath("/");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+/**
+ * Updates the user's profile details.
+ */
+export async function updateUserProfile(input: {
+  name?: string;
+  image?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        ...(input.name ? { name: input.name } : {}),
+        ...(input.image !== undefined ? { image: input.image } : {}),
+      },
+    });
+
+    revalidatePath("/");
+    revalidatePath("/[workspaceId]", "layout");
+    return { success: true };
   } catch (error) {
     return { success: false, error: (error as Error).message };
   }

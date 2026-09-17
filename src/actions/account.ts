@@ -216,3 +216,27 @@ export async function updateDefaultAccount(
     return handleError(error);
   }
 }
+
+export async function deleteAccount(
+  id: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getUserSession();
+    if (!user?.id) throw new Error("Unauthorized");
+
+    const account = await db.financialAccount.findFirst({
+      where: { id, workspace: { userId: user.id } },
+    });
+    if (!account) throw new Error("Account not found");
+
+    await db.financialAccount.delete({
+      where: { id },
+    });
+
+    revalidatePath("/[workspaceId]/dashboard", "page");
+    revalidatePath("/[workspaceId]/accounts", "page");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: (error as Error).message };
+  }
+}

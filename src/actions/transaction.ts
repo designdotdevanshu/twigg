@@ -516,3 +516,38 @@ If it's not a receipt, return an empty object.
     throw new Error("Failed to scan receipt");
   }
 }
+
+/**
+ * Gets all transactions for a workspace with accounts and pockets.
+ */
+export async function getWorkspaceTransactions(
+  workspaceId: string,
+): Promise<Transaction[]> {
+  try {
+    const user = await getUserSession();
+    if (!user?.id) return [];
+
+    const transactions = await db.transaction.findMany({
+      where: {
+        workspaceId,
+        workspace: { userId: user.id },
+      },
+      include: {
+        financialAccount: {
+          select: { id: true, name: true },
+        },
+        pocket: {
+          select: { id: true, name: true, color: true },
+        },
+      },
+      orderBy: { date: "desc" },
+      take: 500,
+    });
+
+    const { serializeDecimal } = await import("@/lib/utils");
+    return transactions.map(serializeDecimal) as unknown as Transaction[];
+  } catch (error) {
+    console.error("Error fetching workspace transactions:", error);
+    return [];
+  }
+}
