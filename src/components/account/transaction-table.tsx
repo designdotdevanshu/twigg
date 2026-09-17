@@ -65,6 +65,7 @@ import {
   Trash,
   X,
   Layers,
+  Download,
 } from "lucide-react";
 
 interface TransactionTableProps {
@@ -196,6 +197,51 @@ export function TransactionTable({
     setSelectedIds([]); // Clear selections on page change
   };
 
+  const handleExportCSV = () => {
+    if (filteredAndSortedTransactions.length === 0) {
+      toast.error("No transactions to export");
+      return;
+    }
+
+    const headers = [
+      "Date",
+      "Description",
+      "Category",
+      "Type",
+      "Amount",
+      "Account",
+      "Pocket",
+      "Recurring",
+    ];
+    const rows = filteredAndSortedTransactions.map((t) => [
+      format(new Date(t.date), "yyyy-MM-dd"),
+      `"${(t.description ?? "").replace(/"/g, '""')}"`,
+      `"${getCategoryName(t.category)}"`,
+      t.type,
+      t.amount,
+      `"${t.financialAccount?.name ?? ""}"`,
+      `"${t.pocket?.name ?? ""}"`,
+      t.isRecurring ? "Yes" : "No",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((r) => r.join(",")),
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute(
+      "download",
+      `twigg_transactions_${format(new Date(), "yyyyMMdd")}.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Transactions exported as CSV");
+  };
+
   const handleBulkDelete = async () => {
     await deleteFn(selectedIds);
   };
@@ -231,7 +277,7 @@ export function TransactionTable({
             className="pl-8"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={typeFilter}
             onValueChange={(value) => {
@@ -264,6 +310,16 @@ export function TransactionTable({
             </SelectContent>
           </Select>
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExportCSV}
+            className="h-9 gap-1.5 text-xs"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </Button>
+
           {/* Bulk Actions */}
           {selectedIds.length > 0 && (
             <div className="flex items-center gap-2">
@@ -271,7 +327,7 @@ export function TransactionTable({
                 size="sm"
                 variant="destructive"
                 onClick={() => setIsDialogOpen(true)}
-                className="font-semibold"
+                className="h-9 font-semibold"
               >
                 <Trash className="size-4" />
                 Delete Selected ({selectedIds.length})
@@ -285,8 +341,9 @@ export function TransactionTable({
               size="icon"
               onClick={handleClearFilters}
               title="Clear filters"
+              className="h-9 w-9"
             >
-              <X className="h-4 w-5" />
+              <X className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -439,7 +496,7 @@ export function TransactionTable({
                   </TableCell>
                   <TableCell
                     className={cn(
-                      "text-right font-medium",
+                      "text-right font-medium tabular-nums",
                       transaction.type === "EXPENSE"
                         ? "text-red-500"
                         : "text-green-500",

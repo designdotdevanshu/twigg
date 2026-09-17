@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Layers, Plus, PlusCircle, Sparkles } from "lucide-react";
-import { AccountChart } from "@/app/(protected)/account/_components/account-chart";
-import { TransactionTable } from "@/app/(protected)/account/_components/transaction-table";
+import { AccountChart } from "@/components/account/account-chart";
+import { TransactionTable } from "@/components/account/transaction-table";
 
 interface AccountPageProps {
   params: Promise<{

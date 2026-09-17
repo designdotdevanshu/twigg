@@ -36,7 +36,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ReceiptScanner } from "@/app/(protected)/transaction/_components/recipt-scanner";
+import { ReceiptScanner } from "@/components/transactions/receipt-scanner";
 import {
   Select,
   SelectContent,
