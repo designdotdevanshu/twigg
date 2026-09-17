@@ -73,7 +73,7 @@ export function WorkspaceBudgetCard({
             <PiggyBank className="text-primary h-4 w-4" />
             Monthly Spending Limit
           </CardTitle>
-          <CardDescription className="mt-0.5 text-xs">
+          <CardDescription className="mt-0.5 text-xs tabular-nums">
             {budgetAmount > 0
               ? `${formatCurrency(currentExpenses, currency)} spent of ${formatCurrency(budgetAmount, currency)}`
               : "No spending limit configured"}
@@ -137,8 +137,10 @@ export function WorkspaceBudgetCard({
               className="h-2"
             />
             <div className="text-muted-foreground flex items-center justify-between text-[11px]">
-              <span>{Math.round(percentUsed)}% consumed</span>
-              <span>
+              <span className="tabular-nums">
+                {Math.round(percentUsed)}% consumed
+              </span>
+              <span className="tabular-nums">
                 {budgetAmount - currentExpenses > 0
                   ? `${formatCurrency(budgetAmount - currentExpenses, currency)} left`
                   : "Limit exceeded"}

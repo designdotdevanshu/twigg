@@ -29,6 +29,7 @@ import {
   User as UserIcon,
   Building2,
   Sparkles,
+  ChevronRight,
 } from "lucide-react";
 
 export default async function WorkspaceDashboardPage({
@@ -170,7 +171,7 @@ export default async function WorkspaceDashboardPage({
               </span>
               <Wallet className="h-4 w-4" />
             </div>
-            <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
+            <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
               {formatCurrency(totalBalance, workspace.currency)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -189,7 +190,7 @@ export default async function WorkspaceDashboardPage({
               </span>
               <TrendingUp className="h-4 w-4 text-emerald-500" />
             </div>
-            <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+            <div className="mt-2 text-2xl font-bold tracking-tight text-emerald-600 tabular-nums dark:text-emerald-400">
               +{formatCurrency(monthIncome, workspace.currency)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -207,7 +208,7 @@ export default async function WorkspaceDashboardPage({
               </span>
               <TrendingDown className="h-4 w-4 text-rose-500" />
             </div>
-            <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
+            <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
               -{formatCurrency(monthExpenses, workspace.currency)}
             </div>
             <p className="text-muted-foreground mt-1 text-[11px]">
@@ -226,7 +227,7 @@ export default async function WorkspaceDashboardPage({
                 </span>
                 <Layers className="text-primary h-4 w-4" />
               </div>
-              <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
+              <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
                 {formatCurrency(totalAllocatedPockets, workspace.currency)}
               </div>
               <p className="text-muted-foreground mt-1 text-[11px]">
@@ -244,7 +245,7 @@ export default async function WorkspaceDashboardPage({
                 </span>
                 <Briefcase className="h-4 w-4 text-indigo-500" />
               </div>
-              <div className="text-foreground mt-2 text-2xl font-bold tracking-tight">
+              <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
                 {runwayMonths ? `${runwayMonths} mos` : "N/A"}
               </div>
               <p className="text-muted-foreground mt-1 text-[11px]">
@@ -281,21 +282,30 @@ export default async function WorkspaceDashboardPage({
             </p>
           </div>
 
-          {accounts.length > 0 && (
-            <CreatePocketDialog
-              accounts={accounts}
-              trigger={
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1 self-start text-xs sm:self-auto"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Pocket
-                </Button>
-              }
-            />
-          )}
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/${workspaceId}/pockets`}
+              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-xs font-medium transition hover:underline"
+            >
+              View All <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+
+            {accounts.length > 0 && (
+              <CreatePocketDialog
+                accounts={accounts}
+                trigger={
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1 self-start text-xs sm:self-auto"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Pocket
+                  </Button>
+                }
+              />
+            )}
+          </div>
         </div>
 
         {pockets.length === 0 ? (
@@ -353,6 +363,13 @@ export default async function WorkspaceDashboardPage({
               Manage your underlying bank, savings, and operating containers.
             </p>
           </div>
+
+          <Link
+            href={`/${workspaceId}/accounts`}
+            className="text-muted-foreground hover:text-foreground inline-flex items-center gap-0.5 text-xs font-medium transition hover:underline"
+          >
+            View All <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

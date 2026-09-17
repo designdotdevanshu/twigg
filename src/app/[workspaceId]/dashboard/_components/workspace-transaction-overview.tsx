@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Pie, PieChart, Cell } from "recharts";
 import { format } from "date-fns";
-import { TrendingDown, TrendingUp, Layers } from "lucide-react";
+import { TrendingDown, TrendingUp, Layers, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -139,8 +139,18 @@ export function WorkspaceTransactionOverview({
               </SelectContent>
             </Select>
 
+            <Link
+              href={`/${workspaceId}/transactions`}
+              className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 hover:underline dark:text-emerald-400"
+            >
+              View All <ChevronRight className="h-3.5 w-3.5" />
+            </Link>
+
             <Link href={`/${workspaceId}/transaction/create`}>
-              <Button size="sm" className="h-8 px-2.5 text-xs">
+              <Button
+                size="sm"
+                className="h-8 bg-emerald-500 px-2.5 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+              >
                 + Add
               </Button>
             </Link>
@@ -153,80 +163,88 @@ export function WorkspaceTransactionOverview({
               No transactions recorded in this workspace yet.
             </div>
           ) : (
-            <div className="divide-border/60 divide-y">
-              {recentTransactions.map((tx) => {
-                const isExpense = tx.type === "EXPENSE";
-                const pocketName = tx.pocket?.name;
-                const pocketColor = tx.pocket?.color ?? "#0ea5e9";
+            <div>
+              <div className="divide-border/60 divide-y">
+                {recentTransactions.map((tx) => {
+                  const isExpense = tx.type === "EXPENSE";
+                  const pocketName = tx.pocket?.name;
+                  const pocketColor = tx.pocket?.color ?? "#0ea5e9";
 
-                return (
-                  <div
-                    key={tx.id}
-                    className="hover:bg-muted/40 flex items-center justify-between px-6 py-3.5 transition"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold",
-                          isExpense
-                            ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                            : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-                        )}
-                      >
-                        {isExpense ? (
-                          <TrendingDown className="h-4 w-4" />
-                        ) : (
-                          <TrendingUp className="h-4 w-4" />
-                        )}
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <p className="text-foreground text-sm font-medium capitalize">
-                            {tx.description ?? tx.category.replace(/-/g, " ")}
-                          </p>
-                          {pocketName ? (
-                            <span
-                              className="inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-[10px] font-medium"
-                              style={{
-                                backgroundColor: `${pocketColor}15`,
-                                color: pocketColor,
-                              }}
-                            >
-                              <Layers className="h-2.5 w-2.5" />
-                              {pocketName}
-                            </span>
+                  return (
+                    <div
+                      key={tx.id}
+                      className="hover:bg-muted/40 flex items-center justify-between px-6 py-3.5 transition"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={cn(
+                            "flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold",
+                            isExpense
+                              ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                              : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                          )}
+                        >
+                          {isExpense ? (
+                            <TrendingDown className="h-4 w-4" />
                           ) : (
-                            <span className="text-muted-foreground/70 text-[10px]">
-                              Direct Account
-                            </span>
+                            <TrendingUp className="h-4 w-4" />
                           )}
                         </div>
 
-                        <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
-                          <span>
-                            {format(new Date(tx.date), "MMM d, yyyy")}
-                          </span>
-                          <span>•</span>
-                          <span>{tx.financialAccount?.name ?? "Account"}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="text-foreground text-xs font-semibold">
+                              {tx.description ?? tx.category}
+                            </p>
+                            {pocketName && (
+                              <span
+                                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                style={{
+                                  backgroundColor: `${pocketColor}20`,
+                                  color: pocketColor,
+                                }}
+                              >
+                                <Layers className="h-2.5 w-2.5" />
+                                {pocketName}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-muted-foreground text-[11px]">
+                            {format(new Date(tx.date), "MMM d, yyyy")} &bull;{" "}
+                            {tx.financialAccount?.name}
+                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    <div
-                      className={cn(
-                        "text-sm font-semibold tracking-tight",
-                        isExpense
-                          ? "text-foreground"
-                          : "text-emerald-600 dark:text-emerald-400",
-                      )}
-                    >
-                      {isExpense ? "-" : "+"}
-                      {formatCurrency(Number(tx.amount), currency)}
+                      <div className="text-right">
+                        <p
+                          className={cn(
+                            "font-mono text-xs font-bold tabular-nums",
+                            isExpense
+                              ? "text-foreground"
+                              : "text-emerald-600 dark:text-emerald-400",
+                          )}
+                        >
+                          {isExpense ? "-" : "+"}
+                          {formatCurrency(Number(tx.amount), currency)}
+                        </p>
+                        <p className="text-muted-foreground text-[10px] capitalize">
+                          {tx.category}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="border-border/60 border-t p-3 text-center">
+                <Link
+                  href={`/${workspaceId}/transactions`}
+                  className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition"
+                >
+                  View complete transaction history{" "}
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
           )}
         </CardContent>
@@ -293,7 +311,7 @@ export function WorkspaceTransactionOverview({
                     <span className="text-muted-foreground truncate">
                       {entry.category}
                     </span>
-                    <span className="text-foreground ml-auto font-semibold">
+                    <span className="text-foreground ml-auto font-semibold tabular-nums">
                       {formatCurrency(entry.amount, currency)}
                     </span>
                   </div>

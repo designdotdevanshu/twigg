@@ -88,7 +88,7 @@ export function WorkspaceAccountCard({
           <span className="text-muted-foreground text-[11px] font-medium tracking-wider uppercase">
             Account Balance
           </span>
-          <div className="text-foreground text-2xl font-bold tracking-tight">
+          <div className="text-foreground text-2xl font-bold tracking-tight tabular-nums">
             {formatCurrency(balance, currency)}
           </div>
         </div>
