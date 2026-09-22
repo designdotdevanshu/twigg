@@ -30,6 +30,7 @@ import {
   Building2,
   Sparkles,
   ChevronRight,
+  QrCode,
 } from "lucide-react";
 
 export default async function WorkspaceDashboardPage({
@@ -89,6 +90,63 @@ export default async function WorkspaceDashboardPage({
       ? (totalBalance / monthlyBurn).toFixed(1)
       : null;
 
+  if (isPersonal) {
+    return (
+      <div className="space-y-8 pb-12">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
+                My Profile
+              </h1>
+              <Badge
+                variant="outline"
+                className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs font-semibold"
+              >
+                <span className="flex items-center gap-1">
+                  <UserIcon className="h-3 w-3" /> Public Identity
+                </span>
+              </Badge>
+            </div>
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+              Manage your public payment links and incoming requests.
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Link href={`/${workspaceId}/upi`}>
+              <Button size="sm" className="gap-1.5 text-xs font-medium shadow-xs">
+                <PlusCircle className="h-3.5 w-3.5" />
+                New Payment Link
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        <Card className="border-border/80 shadow-xs">
+          <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="bg-primary/10 text-primary mb-3 flex h-14 w-14 items-center justify-center rounded-2xl">
+              <QrCode className="h-7 w-7" />
+            </div>
+            <h3 className="text-foreground text-base font-semibold">
+              Payment Identity Hub
+            </h3>
+            <p className="text-muted-foreground mt-1 mb-5 max-w-md text-sm">
+              Your personal workspace is designed exclusively for receiving payments. Navigate to the Payment Links tab to generate shareable UPI QR codes.
+            </p>
+            <Link href={`/${workspaceId}/upi`}>
+              <Button className="gap-1.5 bg-emerald-500 text-slate-950 hover:bg-emerald-400">
+                <Sparkles className="h-4 w-4" />
+                Manage Payment Links
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Business Dashboard
   return (
     <div className="space-y-8 pb-12">
       {/* Top Header & Context */}
@@ -100,47 +158,20 @@ export default async function WorkspaceDashboardPage({
             </h1>
             <Badge
               variant="outline"
-              className={`text-xs font-semibold ${
-                isPersonal
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600"
-                  : "border-indigo-500/30 bg-indigo-500/10 text-indigo-600"
-              }`}
+              className="border-indigo-500/30 bg-indigo-500/10 text-indigo-600 text-xs font-semibold"
             >
-              {isPersonal ? (
-                <span className="flex items-center gap-1">
-                  <UserIcon className="h-3 w-3" /> Personal Finance
-                </span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <Building2 className="h-3 w-3" /> Business Finance
-                </span>
-              )}
+              <span className="flex items-center gap-1">
+                <Building2 className="h-3 w-3" /> Commercial Ledger
+              </span>
             </Badge>
           </div>
           <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-            {isPersonal
-              ? "Organize your money into Pockets, track budgets, and manage personal accounts."
-              : "Monitor business runway, operational cash flow, corporate spending, and cost centers."}
+            Monitor business runway, operational cash flow, corporate spending, and cost centers.
           </p>
         </div>
 
         {/* Action Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {isPersonal && accounts.length > 0 && (
-            <CreatePocketDialog
-              accounts={accounts}
-              trigger={
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5 text-xs font-medium"
-                >
-                  <Layers className="text-primary h-3.5 w-3.5" />+ Create Pocket
-                </Button>
-              }
-            />
-          )}
-
           <CreateAccountDrawer workspaceId={workspaceId}>
             <Button
               variant="outline"
@@ -167,7 +198,7 @@ export default async function WorkspaceDashboardPage({
           <CardContent className="p-5">
             <div className="text-muted-foreground flex items-center justify-between">
               <span className="text-xs font-medium tracking-wider uppercase">
-                {isPersonal ? "Total Net Worth" : "Total Cash Reserves"}
+                Total Cash Reserves
               </span>
               <Wallet className="h-4 w-4" />
             </div>
@@ -186,7 +217,7 @@ export default async function WorkspaceDashboardPage({
           <CardContent className="p-5">
             <div className="text-muted-foreground flex items-center justify-between">
               <span className="text-xs font-medium tracking-wider uppercase">
-                {isPersonal ? "Monthly Income" : "Monthly Revenue"}
+                Monthly Revenue
               </span>
               <TrendingUp className="h-4 w-4 text-emerald-500" />
             </div>
@@ -204,7 +235,7 @@ export default async function WorkspaceDashboardPage({
           <CardContent className="p-5">
             <div className="text-muted-foreground flex items-center justify-between">
               <span className="text-xs font-medium tracking-wider uppercase">
-                {isPersonal ? "Monthly Expenses" : "Operating Burn"}
+                Operating Burn
               </span>
               <TrendingDown className="h-4 w-4 text-rose-500" />
             </div>
@@ -217,44 +248,24 @@ export default async function WorkspaceDashboardPage({
           </CardContent>
         </Card>
 
-        {/* Card 4: Pockets Allocation (Personal) OR Runway (Business) */}
-        {isPersonal ? (
-          <Card className="border-border/80 shadow-xs">
-            <CardContent className="p-5">
-              <div className="text-muted-foreground flex items-center justify-between">
-                <span className="text-xs font-medium tracking-wider uppercase">
-                  In Pockets
-                </span>
-                <Layers className="text-primary h-4 w-4" />
-              </div>
-              <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
-                {formatCurrency(totalAllocatedPockets, workspace.currency)}
-              </div>
-              <p className="text-muted-foreground mt-1 text-[11px]">
-                {pockets.length} {pockets.length === 1 ? "pocket" : "pockets"}{" "}
-                created
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-border/80 shadow-xs">
-            <CardContent className="p-5">
-              <div className="text-muted-foreground flex items-center justify-between">
-                <span className="text-xs font-medium tracking-wider uppercase">
-                  Runway
-                </span>
-                <Briefcase className="h-4 w-4 text-indigo-500" />
-              </div>
-              <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
-                {runwayMonths ? `${runwayMonths} mos` : "N/A"}
-              </div>
-              <p className="text-muted-foreground mt-1 text-[11px]">
-                Net cashflow: {netCashflow >= 0 ? "+" : ""}
-                {formatCurrency(netCashflow, workspace.currency)}
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* Card 4: Runway (Business) */}
+        <Card className="border-border/80 shadow-xs">
+          <CardContent className="p-5">
+            <div className="text-muted-foreground flex items-center justify-between">
+              <span className="text-xs font-medium tracking-wider uppercase">
+                Runway
+              </span>
+              <Briefcase className="h-4 w-4 text-indigo-500" />
+            </div>
+            <div className="text-foreground mt-2 text-2xl font-bold tracking-tight tabular-nums">
+              {runwayMonths ? `${runwayMonths} mos` : "N/A"}
+            </div>
+            <p className="text-muted-foreground mt-1 text-[11px]">
+              Net cashflow: {netCashflow >= 0 ? "+" : ""}
+              {formatCurrency(netCashflow, workspace.currency)}
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Monthly Spending Limit / Budget Banner */}
@@ -265,19 +276,17 @@ export default async function WorkspaceDashboardPage({
         currency={workspace.currency}
       />
 
-      {/* POCKETS SECTION (Prominently featured for Personal Finance) */}
+      {/* SUB-FUNDS SECTION */}
       <div className="space-y-4">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-foreground text-lg font-bold tracking-tight">
-                {isPersonal
-                  ? "Pockets & Allocations"
-                  : "Sub-Funds & Allocations"}
+                Sub-Funds & Allocations
               </h2>
             </div>
             <p className="text-muted-foreground text-xs">
-              Earmark money inside your accounts for goals, bills, groceries, or
+              Earmark money inside your accounts for goals, bills, or
               unexpected expenses.
             </p>
           </div>
@@ -300,7 +309,7 @@ export default async function WorkspaceDashboardPage({
                     className="gap-1 self-start text-xs sm:self-auto"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add Pocket
+                    Add Sub-Fund
                   </Button>
                 }
               />
@@ -315,12 +324,10 @@ export default async function WorkspaceDashboardPage({
                 <Layers className="h-6 w-6" />
               </div>
               <h3 className="text-foreground text-sm font-semibold">
-                No pockets created yet
+                No sub-funds created yet
               </h3>
               <p className="text-muted-foreground mt-1 mb-4 max-w-md text-xs">
-                Pockets act as logical partitions inside your accounts (e.g.
-                Groceries, Rent, Vacation Goal) so you can separate your savings
-                without opening new bank accounts.
+                Sub-funds act as logical partitions inside your accounts so you can separate your working capital without opening new bank accounts.
               </p>
               {accounts.length > 0 ? (
                 <CreatePocketDialog
@@ -328,13 +335,13 @@ export default async function WorkspaceDashboardPage({
                   trigger={
                     <Button size="sm" className="gap-1.5 text-xs">
                       <Sparkles className="h-3.5 w-3.5" />
-                      Create Your First Pocket
+                      Create Your First Sub-Fund
                     </Button>
                   }
                 />
               ) : (
                 <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                  Create a financial account below to start adding pockets.
+                  Create a financial account below to start adding sub-funds.
                 </p>
               )}
             </CardContent>

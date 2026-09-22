@@ -56,6 +56,8 @@ import {
   Smartphone,
   Sparkles,
 } from "lucide-react";
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { PaymentCardView } from "./payment-card-view";
 
 interface UpiManagerProps {
   workspaceId: string;
@@ -600,33 +602,40 @@ export function UpiManager({
 
       {/* 4. Generate Link Dialog */}
       <Dialog open={isCreateLinkOpen} onOpenChange={setIsCreateLinkOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleCreateLink}>
+        <DialogContent className="sm:max-w-lg border-slate-800 bg-[#0d121c] text-slate-100">
+          <form onSubmit={handleCreateLink} className="space-y-5">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-sm font-semibold">
-                <QrCode className="h-4 w-4 text-emerald-500" />
-                Generate UPI Payment Page
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Creates a shareable link with an interactive QR code and mobile
-                app deep links.
-              </DialogDescription>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <QrCode className="h-4 w-4" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-semibold text-white">
+                    Create Branded Payment Page
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-slate-400">
+                    Generate a shareable payment destination with a verified merchant QR code.
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-1">
               <div className="space-y-1.5">
-                <Label className="text-xs">Receiving UPI VPA</Label>
+                <Label className="text-xs font-semibold text-slate-200">
+                  Receiving UPI ID <span className="text-emerald-400">*</span>
+                </Label>
                 {upiIds.length > 0 ? (
                   <Select value={linkVpa} onValueChange={setLinkVpa}>
-                    <SelectTrigger className="h-9 text-xs">
+                    <SelectTrigger className="h-10 border-slate-700 bg-slate-900 text-xs">
                       <SelectValue placeholder="Select UPI ID" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="border-slate-800 bg-slate-900 text-slate-100">
                       {upiIds.map((item) => (
                         <SelectItem
                           key={item.id}
                           value={item.vpa}
-                          className="text-xs"
+                          className="text-xs focus:bg-emerald-500/10 focus:text-emerald-400"
                         >
                           {item.label} ({item.vpa})
                         </SelectItem>
@@ -638,56 +647,63 @@ export function UpiManager({
                     placeholder="e.g. name@okhdfcbank"
                     value={linkVpa}
                     onChange={(e) => setLinkVpa(e.target.value)}
-                    className="h-9 font-mono text-xs"
+                    className="h-10 border-slate-700 bg-slate-900 font-mono text-xs text-white"
                     required
                   />
                 )}
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs">Payee Display Name</Label>
+                <Label className="text-xs font-semibold text-slate-200">
+                  Payee Display Name <span className="text-emerald-400">*</span>
+                </Label>
                 <Input
                   value={linkPayee}
                   onChange={(e) => setLinkPayee(e.target.value)}
                   placeholder="e.g. Devanshu Sagar"
-                  className="h-9 text-xs"
+                  className="h-10 border-slate-700 bg-slate-900 text-xs text-white"
                   required
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Fixed Amount (₹ Optional)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={linkAmount}
-                  onChange={(e) => setLinkAmount(e.target.value)}
-                  placeholder="Leave empty for open payer amount"
-                  className="h-9 font-mono text-xs"
-                />
-              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-200">
+                    Fixed Amount (₹ Optional)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={linkAmount}
+                    onChange={(e) => setLinkAmount(e.target.value)}
+                    placeholder="Leave blank for any amount"
+                    className="h-10 border-slate-700 bg-slate-900 font-mono text-xs text-white"
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">
-                  Transaction Remark / Note (Optional)
-                </Label>
-                <Input
-                  value={linkNote}
-                  onChange={(e) => setLinkNote(e.target.value)}
-                  placeholder="e.g. Project retainer, Dinner split"
-                  className="h-9 text-xs"
-                  maxLength={50}
-                />
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-200">
+                    Transaction Note (Optional)
+                  </Label>
+                  <Input
+                    value={linkNote}
+                    onChange={(e) => setLinkNote(e.target.value)}
+                    placeholder="e.g. Invoice #102, Retainer"
+                    className="h-10 border-slate-700 bg-slate-900 text-xs text-white"
+                    maxLength={50}
+                  />
+                </div>
               </div>
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0">
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-slate-800">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={() => setIsCreateLinkOpen(false)}
                 disabled={savingLink}
+                className="text-xs text-slate-400 hover:text-white"
               >
                 Cancel
               </Button>
@@ -695,9 +711,10 @@ export function UpiManager({
                 type="submit"
                 size="sm"
                 disabled={savingLink}
-                className="bg-emerald-500 font-semibold text-slate-950 hover:bg-emerald-400"
+                className="bg-emerald-500 font-semibold text-slate-950 hover:bg-emerald-400 gap-1.5 text-xs h-9 px-4"
               >
-                {savingLink ? "Creating..." : "Generate Link"}
+                <QrCode className="h-4 w-4" />
+                {savingLink ? "Creating..." : "Generate Payment Page"}
               </Button>
             </DialogFooter>
           </form>
@@ -709,77 +726,53 @@ export function UpiManager({
         open={!!previewLink}
         onOpenChange={(open) => !open && setPreviewLink(null)}
       >
-        <DialogContent className="border-slate-800 bg-[#0b0f17] text-center text-slate-200 sm:max-w-sm">
+        <DialogContent className="border-slate-800 bg-[#0d121c] p-5 text-slate-100 sm:max-w-md">
           {previewLink && (
-            <div>
-              <DialogHeader>
-                <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 font-bold text-slate-950">
-                  T
+            <div className="space-y-3">
+              <DialogHeader className="pb-1">
+                <div className="flex items-center justify-between">
+                  <BrandLogo size="sm" href="" />
+                  <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-[10px] text-emerald-400">
+                    Payment Page Preview
+                  </Badge>
                 </div>
-                <DialogTitle className="text-base font-bold text-white">
-                  Pay {previewLink.payeeName}
-                </DialogTitle>
-                <DialogDescription className="font-mono text-xs text-slate-400">
-                  {previewLink.vpa}
-                </DialogDescription>
               </DialogHeader>
 
-              <div className="flex flex-col items-center py-6">
-                <div className="rounded-2xl bg-white p-4 shadow-xl">
-                  <QRCodeSVG
-                    value={buildUpiUri({
-                      pa: previewLink.vpa,
-                      pn: previewLink.payeeName,
-                      am: previewLink.amount,
-                      tn: previewLink.note,
-                    })}
-                    size={200}
-                    level="H"
-                  />
-                </div>
+              <PaymentCardView
+                vpa={previewLink.vpa}
+                payeeName={previewLink.payeeName}
+                amount={previewLink.amount}
+                note={previewLink.note}
+                variant="dialog"
+                shareUrl={typeof window !== "undefined" ? `${window.location.origin}/pay/${previewLink.slug}` : `/pay/${previewLink.slug}`}
+              />
 
-                {previewLink.amount ? (
-                  <div className="mt-4 text-2xl font-bold text-white">
-                    ₹{previewLink.amount.toFixed(2)}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-xs text-slate-400">
-                    Scan with any UPI App (GPay, PhonePe, Paytm)
-                  </p>
-                )}
-
-                {previewLink.note && (
-                  <p className="mt-1 text-xs font-medium text-emerald-400 italic">
-                    &ldquo;{previewLink.note}&rdquo;
-                  </p>
-                )}
-              </div>
-
-              <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleCopy(previewLink.slug)}
-                  className="w-full border-slate-700 text-xs hover:bg-slate-800"
-                >
-                  <Copy className="mr-1 h-3.5 w-3.5" />
-                  Copy Share Link
-                </Button>
-                <Button
-                  size="sm"
                   asChild
-                  className="w-full bg-emerald-500 text-xs font-semibold text-slate-950 hover:bg-emerald-400"
+                  className="flex-1 border-slate-700 bg-slate-900 text-xs text-slate-200 hover:bg-slate-800 h-9"
                 >
                   <a
                     href={`/pay/${previewLink.slug}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                    Open Page
+                    <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                    Open Live Page
                   </a>
                 </Button>
-              </DialogFooter>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPreviewLink(null)}
+                  className="text-xs text-slate-400 hover:text-white h-9"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

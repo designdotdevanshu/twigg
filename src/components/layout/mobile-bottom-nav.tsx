@@ -43,6 +43,7 @@ export function MobileBottomNav({ user }: MobileBottomNavProps) {
   const { currentWorkspace } = useWorkspace();
   const [moreOpen, setMoreOpen] = useState(false);
 
+  const isPersonal = currentWorkspace.type === "PERSONAL";
   const isDashboard = pathname === `/${currentWorkspace.id}/dashboard`;
   const isTransactions =
     pathname === `/${currentWorkspace.id}/transactions` ||
@@ -50,6 +51,34 @@ export function MobileBottomNav({ user }: MobileBottomNavProps) {
   const isUpi = pathname.startsWith(`/${currentWorkspace.id}/upi`);
 
   const moreItems = [
+    ...(!isPersonal
+      ? [
+          {
+            label: "Accounts",
+            href: `/${currentWorkspace.id}/accounts`,
+            icon: CreditCard,
+            description: "Manage bank, savings, and operating accounts",
+          },
+          {
+            label: "Sub-Funds",
+            href: `/${currentWorkspace.id}/pockets`,
+            icon: Layers,
+            description: "Earmarked savings and goal allocations",
+          },
+          {
+            label: "Budgets",
+            href: `/${currentWorkspace.id}/budgets`,
+            icon: PiggyBank,
+            description: "Spending limits & category progress",
+          },
+          {
+            label: "Reports",
+            href: `/${currentWorkspace.id}/reports`,
+            icon: BarChart3,
+            description: "Charts, CSV data export & print reports",
+          },
+        ]
+      : []),
     {
       label: "Accounts",
       href: `/${currentWorkspace.id}/accounts`,
@@ -86,6 +115,7 @@ export function MobileBottomNav({ user }: MobileBottomNavProps) {
     <div className="bg-background/95 border-border safe-area-bottom fixed right-0 bottom-0 left-0 z-40 border-t px-2 py-1.5 backdrop-blur-md md:hidden">
       <div className="mx-auto flex max-w-md items-center justify-around">
         {/* 1. Dashboard */}
+        {/* 1. Dashboard / Profile */}
         <Link
           href={`/${currentWorkspace.id}/dashboard`}
           className={`flex flex-col items-center justify-center rounded-lg px-2.5 py-1 transition ${
@@ -96,6 +126,7 @@ export function MobileBottomNav({ user }: MobileBottomNavProps) {
         >
           <LayoutDashboard className="mb-0.5 size-5" />
           <span className="text-[10px]">Dashboard</span>
+          <span className="text-[10px]">{isPersonal ? "Profile" : "Dashboard"}</span>
         </Link>
 
         {/* 2. Transactions */}
@@ -110,6 +141,20 @@ export function MobileBottomNav({ user }: MobileBottomNavProps) {
           <ArrowLeftRight className="mb-0.5 size-5" />
           <span className="text-[10px]">Transactions</span>
         </Link>
+        {!isPersonal && (
+          <>
+            {/* 2. Transactions */}
+            <Link
+              href={`/${currentWorkspace.id}/transactions`}
+              className={`flex flex-col items-center justify-center rounded-lg px-2.5 py-1 transition ${
+                isTransactions
+                  ? "text-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <ArrowLeftRight className="mb-0.5 size-5" />
+              <span className="text-[10px]">Transactions</span>
+            </Link>
 
         {/* 3. Center Quick Add FAB */}
         <Link
@@ -123,8 +168,23 @@ export function MobileBottomNav({ user }: MobileBottomNavProps) {
             Add
           </span>
         </Link>
+            {/* 3. Center Quick Add FAB */}
+            <Link
+              href={`/${currentWorkspace.id}/transaction/create`}
+              className="-mt-5 flex flex-col items-center justify-center"
+            >
+              <div className="bg-foreground text-background border-background flex size-12 items-center justify-center rounded-full border-2 shadow-lg transition hover:scale-105 active:scale-95">
+                <Plus className="size-6 stroke-[2.5]" />
+              </div>
+              <span className="text-muted-foreground mt-0.5 text-[10px] font-medium">
+                Add
+              </span>
+            </Link>
+          </>
+        )}
 
         {/* 4. UPI Pay */}
+        {/* 4. UPI Pay / Links */}
         <Link
           href={`/${currentWorkspace.id}/upi`}
           className={`flex flex-col items-center justify-center rounded-lg px-2.5 py-1 transition ${

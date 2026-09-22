@@ -45,39 +45,50 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
   const { currentWorkspace } = useWorkspace();
   const { isMobile, setOpenMobile } = useSidebar();
 
+  const isPersonal = currentWorkspace.type === "PERSONAL";
+
   const navGroups = [
     {
-      title: "Core",
-      items: [
-        {
-          label: "Dashboard",
-          href: `/${currentWorkspace.id}/dashboard`,
-          icon: LayoutDashboard,
-          active: pathname === `/${currentWorkspace.id}/dashboard`,
-        },
-        {
-          label: "Accounts",
-          href: `/${currentWorkspace.id}/accounts`,
-          icon: CreditCard,
-          active:
-            pathname.startsWith(`/${currentWorkspace.id}/accounts`) ||
-            pathname.startsWith(`/${currentWorkspace.id}/account/`),
-        },
-        {
-          label: "Transactions",
-          href: `/${currentWorkspace.id}/transactions`,
-          icon: ArrowLeftRight,
-          active:
-            pathname === `/${currentWorkspace.id}/transactions` ||
-            pathname.startsWith(`/${currentWorkspace.id}/transaction/`),
-        },
-      ],
+      title: "Workspace",
+      items: isPersonal
+        ? [
+            {
+              label: "My Profile",
+              href: `/${currentWorkspace.id}/dashboard`,
+              icon: LayoutDashboard,
+              active: pathname === `/${currentWorkspace.id}/dashboard`,
+            },
+          ]
+        : [
+            {
+              label: "Dashboard",
+              href: `/${currentWorkspace.id}/dashboard`,
+              icon: LayoutDashboard,
+              active: pathname === `/${currentWorkspace.id}/dashboard`,
+            },
+            {
+              label: "Accounts",
+              href: `/${currentWorkspace.id}/accounts`,
+              icon: CreditCard,
+              active:
+                pathname.startsWith(`/${currentWorkspace.id}/accounts`) ||
+                pathname.startsWith(`/${currentWorkspace.id}/account/`),
+            },
+            {
+              label: "Transactions",
+              href: `/${currentWorkspace.id}/transactions`,
+              icon: ArrowLeftRight,
+              active:
+                pathname === `/${currentWorkspace.id}/transactions` ||
+                pathname.startsWith(`/${currentWorkspace.id}/transaction/`),
+            },
+          ],
     },
     {
       title: "Management",
       items: [
         {
-          label: "Pockets",
+          label: isPersonal ? "Pockets" : "Sub-Funds",
           href: `/${currentWorkspace.id}/pockets`,
           icon: Layers,
           active: pathname === `/${currentWorkspace.id}/pockets`,
@@ -93,14 +104,18 @@ export function AppSidebar({ user, ...props }: AppSidebarProps) {
     {
       title: "Tools & Settings",
       items: [
+        ...(!isPersonal
+          ? [
+              {
+                label: "Reports",
+                href: `/${currentWorkspace.id}/reports`,
+                icon: BarChart3,
+                active: pathname === `/${currentWorkspace.id}/reports`,
+              },
+            ]
+          : []),
         {
-          label: "Reports",
-          href: `/${currentWorkspace.id}/reports`,
-          icon: BarChart3,
-          active: pathname === `/${currentWorkspace.id}/reports`,
-        },
-        {
-          label: "UPI Payments",
+          label: isPersonal ? "Payment Links" : "UPI Payments",
           href: `/${currentWorkspace.id}/upi`,
           icon: QrCode,
           active: pathname.startsWith(`/${currentWorkspace.id}/upi`),
